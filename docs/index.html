@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pointy - Demo</title>
+  <link href="https://cdn.jotfor.ms/fonts/?family=Circular" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #dde8ef;
+      font-family: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    .stats-panel {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: rgba(10, 21, 81, 0.9);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: monospace;
+      z-index: 10000;
+      min-width: 180px;
+    }
+
+    .stats-panel h4 {
+      margin: 0 0 8px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .stats-label {
+      opacity: 0.7;
+    }
+
+    .stats-value {
+      font-weight: bold;
+    }
+
+    .stats-value.good { color: #4ade80; }
+    .stats-value.warn { color: #fbbf24; }
+    .stats-value.bad { color: #f87171; }
+
+    .main-content {
+      flex: 1;
+      position: relative;
+      padding: 40px;
+    }
+
+    /* Target boxes */
+    .target-box {
+      width: 280px;
+      height: 80px;
+      background: white;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 16px 20px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #1a1a2e;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, width 0.5s ease, margin-left 0.5s ease, left 0.5s ease, top 0.5s ease;
+    }
+
+    .target-box:hover {
+      transform: scale(1.02);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .target-box.resizing {
+      background: white;
+      color: #1a1a2e;
+    }
+
+    .target-box.expanded {
+      width: 380px;
+      margin-left: -50px;
+    }
+
+    /* Control panel - top right */
+    .control-panel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      min-width: 420px;
+      max-height: calc(100vh - 32px);
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .control-panel.collapsed {
+      max-height: 44px;
+    }
+
+    .control-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .control-panel-header:hover {
+      background: #f8fafc;
+    }
+
+    .control-panel.collapsed .control-panel-header {
+      border-bottom: none;
+    }
+
+    .control-panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0a1551;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-panel-toggle {
+      font-size: 12px;
+      color: #64748b;
+      transition: transform 0.3s ease;
+    }
+
+    .control-panel.collapsed .control-panel-toggle {
+      transform: rotate(180deg);
+    }
+
+    .control-panel-body {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-section.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .control-panel.collapsed .control-panel-body {
+      display: none;
+    }
+
+    .control-panel h4 {
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-row.nav {
+      justify-content: space-between;
+    }
+
+    /* Responsive control panel */
+    @media (max-height: 750px) {
+      .control-panel {
+        max-height: calc(100vh - 120px);
+      }
+      .control-panel-body {
+        gap: 12px;
+      }
+      .input-group {
+        margin-bottom: 2px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .control-panel {
+        left: 16px;
+        right: 16px;
+        min-width: auto;
+      }
+      .control-panel-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Steps panel - bottom left floating */
+    .steps-panel {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    @media (max-width: 500px) {
+      .steps-panel {
+        left: 16px;
+        right: 16px;
+        justify-content: space-between;
+      }
+    }
+
+    .step-indicator {
+      color: #0a1551;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .control-btn {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-btn:hover {
+      background-color: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+
+    .control-btn:active {
+      background-color: #cbd5e1;
+    }
+
+    .control-btn:disabled {
+      background-color: #f8fafc;
+      color: #94a3b8;
+      border-color: #e2e8f0;
+      cursor: not-allowed;
+    }
+
+    .control-btn.primary {
+      background-color: #0a1551;
+      color: white;
+      border-color: #0a1551;
+    }
+
+    .control-btn.primary:hover {
+      background-color: #1a2a6c;
+      border-color: #1a2a6c;
+    }
+
+    select.control-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23334155' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 32px;
+      text-align: left;
+    }
+
+    /* Split button with dropdown */
+    .split-btn {
+      display: flex;
+      position: relative;
+    }
+
+    .split-btn .control-btn:first-child {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right: none;
+    }
+
+    .split-btn .dropdown-toggle {
+      padding: 10px 8px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      min-width: auto;
+    }
+
+    .split-btn .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      min-width: 140px;
+      margin-top: 4px;
+      display: none;
+      z-index: 1000;
+    }
+
+    .split-btn .dropdown-menu.open {
+      display: block;
+    }
+
+    .split-btn .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      transition: background 0.15s ease;
+    }
+
+    .split-btn .dropdown-item:first-child {
+      border-radius: 5px 5px 0 0;
+    }
+
+    .split-btn .dropdown-item:last-child {
+      border-radius: 0 0 5px 5px;
+    }
+
+    .split-btn .dropdown-item:hover {
+      background: #f1f5f9;
+    }
+
+    .split-btn .dropdown-item.active {
+      background: #e2e8f0;
+      font-weight: 500;
+    }
+
+    .control-input {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+      padding: 0 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      height: 36px;
+      width: 90px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .control-input:focus {
+      outline: none;
+      border-color: #0a1551;
+      box-shadow: 0 0 0 2px rgba(10, 21, 81, 0.1);
+    }
+
+    .control-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .input-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .input-group .control-input {
+      flex: 1;
+      max-width: 80px;
+    }
+
+    .control-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 4px 0;
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 8px 0;
+      cursor: pointer;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .toggle-btn:hover {
+      color: #334155;
+    }
+
+    .toggle-indicator {
+      width: 32px;
+      height: 18px;
+      background: #e2e8f0;
+      border-radius: 9px;
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .toggle-indicator::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle-btn.active .toggle-indicator {
+      background: #0a1551;
+    }
+
+    .toggle-btn.active .toggle-indicator::after {
+      transform: translateX(14px);
+    }
+
+    .stats-panel.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Stats Panel -->
+  <div class="stats-panel hidden" id="statsPanel">
+    <h4>Performance</h4>
+    <div class="stats-row">
+      <span class="stats-label">FPS:</span>
+      <span class="stats-value" id="statsFps">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Frame Time:</span>
+      <span class="stats-value" id="statsFrameTime">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Updates/s:</span>
+      <span class="stats-value" id="statsUpdates">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Tracking FPS:</span>
+      <span class="stats-value good" id="statsTrackingFps">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Memory:</span>
+      <span class="stats-value" id="statsMemory">--</span>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Buttons will be created dynamically -->
+  </div>
+
+  <!-- Custom target for pointTo demo -->
+  <div id="customTarget" style="
+    position: absolute;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+  ">Custom Target</div>
+
+  <!-- Control Panel - Top Right -->
+  <div class="control-panel" id="controlPanel">
+    <div class="control-panel-header" id="controlPanelHeader">
+      <span class="control-panel-title">⚙️ Options</span>
+      <span class="control-panel-toggle">▼</span>
+    </div>
+    <div class="control-panel-body">
+      <!-- Left Column -->
+      <div class="control-section">
+        <h4>Visibility</h4>
+        <button class="toggle-btn active" id="visibilityToggle">
+          <span>Show Pointer</span>
+          <div class="toggle-indicator"></div>
+        </button>
+      </div>
+      
+      <div class="control-section">
+        <h4>Messages</h4>
+        <div class="input-group">
+          <span class="input-label">Msg Interval:</span>
+          <input type="number" class="control-input" id="msgIntervalInput" value="2500" min="500" step="100">
+        </div>
+        <div class="input-group">
+          <span class="input-label">Msg Transition:</span>
+          <input type="number" class="control-input" id="msgTransitionInput" value="500" min="100" step="50">
+        </div>
+        <div class="split-btn" style="width: 100%;">
+          <button class="control-btn" id="randomMsgBtn" style="flex: 1;">🎲 Single Message</button>
+          <button class="control-btn dropdown-toggle" id="randomMsgDropdown">▾</button>
+          <div class="dropdown-menu" id="randomMsgMenu">
+            <div class="dropdown-item active" data-mode="single">Single Message</div>
+            <div class="dropdown-item" data-mode="multi">Multi Message (3x)</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="control-section">
+        <h4>Animation</h4>
+        <div class="control-row">
+          <select class="control-btn" id="easingSelect" style="flex: 1;">
+            <optgroup label="Custom">
+              <option value="default" selected>Default</option>
+              <option value="bounce">Bounce</option>
+              <option value="elastic">Elastic</option>
+              <option value="smooth">Smooth</option>
+              <option value="snap">Snap</option>
+              <option value="standard">Material</option>
+              <option value="expo-out">Expo Out</option>
+              <option value="back-out">Back Out</option>
+              <option value="circ-out">Circ Out</option>
+            </optgroup>
+            <optgroup label="CSS Built-in">
+              <option value="linear">Linear</option>
+              <option value="ease">Ease</option>
+              <option value="ease-in">Ease In</option>
+              <option value="ease-out">Ease Out</option>
+              <option value="ease-in-out">Ease In-Out</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="input-group">
+          <span class="input-label">Duration:</span>
+          <input type="number" class="control-input" id="animDurationInput" value="1000" min="100" step="100">
+        </div>
+        <div class="input-group">
+          <span class="input-label">Intro Fade:</span>
+          <input type="number" class="control-input" id="introFadeInput" value="1000" min="0" step="100">
+        </div>
+        <div class="input-group">
+          <span class="input-label">Bubble Fade:</span>
+          <input type="number" class="control-input" id="bubbleFadeInput" value="500" min="0" step="50">
+        </div>
+        <button class="toggle-btn active" id="floatingToggle">
+          <span>Floating Animation</span>
+          <div class="toggle-indicator"></div>
+        </button>
+      </div>
+      
+      <!-- Right Column -->
+      <div class="control-section">
+        <h4>Position</h4>
+        <div class="input-group">
+          <span class="input-label">Initial Pos:</span>
+          <select class="control-select" id="initialPositionSelect">
+            <option value="center">Center</option>
+            <option value="first-step">First Step</option>
+            <option value="top-left">Top Left</option>
+            <option value="top-center">Top Center</option>
+            <option value="top-right">Top Right</option>
+            <option value="middle-left">Middle Left</option>
+            <option value="middle-right">Middle Right</option>
+            <option value="bottom-left">Bottom Left</option>
+            <option value="bottom-center">Bottom Center</option>
+            <option value="bottom-right">Bottom Right</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <span class="input-label">Edge Offset:</span>
+          <input type="number" class="control-input" id="initialPosOffsetInput" value="32" step="8">
+        </div>
+        <div class="input-group">
+          <span class="input-label">Offset X:</span>
+          <input type="number" class="control-input" id="offsetXInput" value="20" step="5">
+        </div>
+        <div class="input-group">
+          <span class="input-label">Offset Y:</span>
+          <input type="number" class="control-input" id="offsetYInput" value="16" step="5">
+        </div>
+        <button class="toggle-btn active" id="trackingToggle">
+          <span>Tracking</span>
+          <div class="toggle-indicator"></div>
+        </button>
+        <div class="input-group">
+          <span class="input-label">Tracking FPS:</span>
+          <input type="number" class="control-input" id="trackingFpsInput" value="60" min="0" max="144" step="10">
+        </div>
+      </div>
+      
+      <div class="control-section">
+        <h4>Behavior</h4>
+        <button class="toggle-btn active" id="resetOnCompleteToggle">
+          <span>Reset on Complete</span>
+          <div class="toggle-indicator"></div>
+        </button>
+        <button class="toggle-btn active" id="hideOnCompleteToggle">
+          <span>Hide on Complete</span>
+          <div class="toggle-indicator"></div>
+        </button>
+      </div>
+      
+      <div class="control-section">
+        <h4>Autoplay</h4>
+        <div class="input-group">
+          <span class="input-label">Interval:</span>
+          <input type="number" class="control-input" id="autoplayInput" value="0" min="0" step="500" placeholder="0 = off">
+        </div>
+        <button class="toggle-btn" id="autoplayToggle">
+          <span>Autoplay</span>
+          <div class="toggle-indicator"></div>
+        </button>
+        <button class="toggle-btn active" id="waitForMessagesToggle">
+          <span>Wait for Messages</span>
+          <div class="toggle-indicator"></div>
+        </button>
+      </div>
+      
+      <!-- Full Width Row -->
+      <div class="control-section full-width">
+        <h4>Actions</h4>
+        <div class="control-row">
+          <button class="control-btn" id="pointToBtn" style="flex: 1;">📍 Point to Custom</button>
+          <button class="control-btn" id="restartBtn" style="flex: 1;">🔄 Restart</button>
+        </div>
+        <button class="control-btn" id="copyCodeBtn" style="width: 100%;">📋 Copy Config Code</button>
+      </div>
+      
+      <div class="control-section full-width">
+        <button class="toggle-btn" id="statsToggle">
+          <span>Show Stats</span>
+          <div class="toggle-indicator"></div>
+        </button>
+        <button class="toggle-btn active" id="logEventsToggle">
+          <span>Log Events</span>
+          <div class="toggle-indicator"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps Panel - Bottom Left -->
+  <div class="steps-panel">
+    <button class="control-btn" id="prevBtn" disabled>← Prev</button>
+    <span class="step-indicator" id="stepIndicator">Step 1 of 6</span>
+    <button class="control-btn primary" id="nextBtn">Next →</button>
+  </div>
+
+  <!-- Local: pointy.js is copied to docs folder during build -->
+  <script src="pointy.js"></script>
+  <script>
+    // Shuffle array helper
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Random position helper (avoiding edges and control bar)
+    function getRandomPosition(existingPositions, width, height) {
+      const padding = 80; // Extra padding for panels
+      const minDistance = 250;
+      let attempts = 0;
+      let x, y;
+      
+      do {
+        // Avoid left side (stats panel ~200px), right side (control panel ~230px), bottom left (steps panel)
+        x = 220 + Math.random() * (window.innerWidth - width - 220 - 250);
+        y = padding + Math.random() * (window.innerHeight - height - padding * 2 - 80);
+        attempts++;
+      } while (
+        attempts < 100 &&
+        existingPositions.some(pos => 
+          Math.hypot(pos.x - x, pos.y - y) < minDistance
+        )
+      );
+      
+      return { x, y };
+    }
+
+    // Create 6 buttons at random positions
+    const mainContent = document.querySelector('.main-content');
+    const buttonNames = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta'];
+    const positions = [];
+    const buttonElements = []; // Store actual DOM elements
+
+    buttonNames.forEach((name, i) => {
+      const btn = document.createElement('div');
+      btn.className = 'target-box';
+      btn.id = `target${i + 1}`;
+      btn.style.position = 'absolute';
+      
+      // Title
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = name;
+      btn.appendChild(titleSpan);
+      
+      // Call Pointy button (small, right-center)
+      const callBtn = document.createElement('button');
+      callBtn.textContent = '📍';
+      callBtn.title = 'Call Pointy here';
+      callBtn.style.cssText = `
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #e2e8f0;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease, transform 0.2s ease;
+      `;
+      callBtn.addEventListener('mouseenter', () => { callBtn.style.background = '#cbd5e1'; callBtn.style.transform = 'translateY(-50%) scale(1.1)'; });
+      callBtn.addEventListener('mouseleave', () => { callBtn.style.background = '#e2e8f0'; callBtn.style.transform = 'translateY(-50%)'; });
+      callBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof pointy !== 'undefined') {
+          pointy.pointTo(btn, `You called me to ${name}!`);
+        }
+      });
+      btn.appendChild(callBtn);
+      
+      // Make first button the resizing one
+      if (i === 0) {
+        btn.classList.add('resizing');
+        // Add tracking badge
+        const trackBadge = document.createElement('span');
+        trackBadge.style.cssText = `
+          position: absolute;
+          top: -10px;
+          left: -10px;
+          background: #6366f1;
+          color: white;
+          font-size: 10px;
+          padding: 2px 6px;
+          border-radius: 10px;
+          font-weight: 700;
+        `;
+        trackBadge.textContent = '📍 TRACKING';
+        btn.appendChild(trackBadge);
+      }
+      
+      const pos = getRandomPosition(positions, 200, 60);
+      positions.push(pos);
+      
+      btn.style.left = `${pos.x}px`;
+      btn.style.top = `${pos.y}px`;
+      
+      mainContent.appendChild(btn);
+      buttonElements.push(btn); // Store DOM element directly
+      
+      // Click handler
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('resizing')) {
+          // Toggle expand for resizing box
+          btn.classList.toggle('expanded');
+        } else {
+          // Move to random position for other boxes
+          const newPos = getRandomPosition([], 200, 60);
+          btn.style.left = `${newPos.x}px`;
+          btn.style.top = `${newPos.y}px`;
+        }
+      });
+    });
+
+    // Position custom target randomly
+    const customTarget = document.getElementById('customTarget');
+    const customPos = getRandomPosition(positions, 150, 50);
+    positions.push(customPos);
+    customTarget.style.left = `${customPos.x}px`;
+    customTarget.style.top = `${customPos.y}px`;
+    mainContent.appendChild(customTarget);
+
+    // Shuffle button elements for random tour order
+    const shuffledButtons = shuffle(buttonElements);
+    
+    // Find the tracking button index in shuffled array
+    const trackingBtn = buttonElements[0]; // First button is tracking
+    const trackingIndex = shuffledButtons.indexOf(trackingBtn);
+    
+    // Randomly pick 2 different indices for forced directions (excluding tracking button)
+    const availableIndices = [0, 1, 2, 3, 4, 5].filter(i => i !== trackingIndex);
+    const shuffledIndices = shuffle(availableIndices);
+    const upIndex = shuffledIndices[0];
+    const downIndex = shuffledIndices[1];
+    
+    // Add badges to the forced direction buttons
+    function addDirectionBadge(btn, direction) {
+      const badge = document.createElement('span');
+      badge.style.cssText = `
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: ${direction === 'up' ? '#10b981' : '#f59e0b'};
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+      `;
+      badge.textContent = direction === 'up' ? '⬆ UP' : '⬇ DOWN';
+      btn.style.position = 'absolute'; // ensure relative for badge
+      btn.appendChild(badge);
+    }
+    
+    addDirectionBadge(shuffledButtons[upIndex], 'up');
+    addDirectionBadge(shuffledButtons[downIndex], 'down');
+    
+    // Pick a random index for multi-message step (not tracking, up, or down)
+    const multiMessageCandidates = availableIndices.filter(i => i !== upIndex && i !== downIndex);
+    const multiMessageIndex = multiMessageCandidates[Math.floor(Math.random() * multiMessageCandidates.length)];
+    
+    // Add multi-message badge
+    function addMultiMessageBadge(btn) {
+      const badge = document.createElement('span');
+      badge.style.cssText = `
+        position: absolute;
+        bottom: -10px;
+        right: -10px;
+        background: #ec4899;
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+      `;
+      badge.textContent = '💬 MULTI';
+      btn.appendChild(badge);
+    }
+    
+    addMultiMessageBadge(shuffledButtons[multiMessageIndex]);
+    
+    // Different tooltip messages
+    const tooltipMessages = [
+      'Hey! Start here',
+      'Now check this out',
+      'Keep going...',
+      'Looking good!',
+      'Almost there...',
+      'Final destination!'
+    ];
+    
+    // Multi-message content
+    const multiMessages = [
+      'This step has multiple messages!',
+      'They cycle automatically ⏱️',
+      'Or click the bubble to skip',
+      'Pretty cool, right? ✨'
+    ];
+    
+    // Create steps - using DOM elements directly (not selectors)
+    const steps = shuffledButtons.map((btn, i) => ({
+      target: btn, // DOM element directly!
+      content: i === upIndex ? 'Always points up' : 
+               i === downIndex ? 'Always points down' : 
+               i === multiMessageIndex ? multiMessages :
+               tooltipMessages[i],
+      direction: i === upIndex ? 'up' : i === downIndex ? 'down' : undefined
+    }));
+
+    // Get initial values from inputs
+    const initialMsgInterval = parseInt(document.getElementById('msgIntervalInput').value, 10) || 2500;
+    const initialMsgTransition = parseInt(document.getElementById('msgTransitionInput').value, 10) || 500;
+
+    // Create pointy instance with steps
+    const pointy = new Pointy({
+      steps: steps,
+      messageInterval: initialMsgInterval,
+      messageTransitionDuration: initialMsgTransition,
+      onStepChange: (index, step) => {
+        updateUI();
+      },
+      onComplete: () => {
+        pointy.hide();
+        nextBtn.textContent = 'Restart';
+      }
+    });
+
+    // Log all events for demo purposes
+    // Use generic 'all' listener instead of individual events
+    // This catches ALL events with a single handler
+    // Note: 'track' event is excluded as it fires at trackingFps rate (up to 60+ times/sec)
+    // You can listen to it separately: pointy.on('track', (data) => { ... })
+    // Or use: pointy.on('tracking', (data) => { ... }) for tracking group events
+    let logEventsEnabled = true;
+    
+    // Group colors for visual distinction
+    const groupColors = {
+      lifecycle: { bg: '#22c55e', text: 'white' },     // green
+      navigation: { bg: '#3b82f6', text: 'white' },    // blue
+      animation: { bg: '#f59e0b', text: 'black' },     // amber
+      content: { bg: '#8b5cf6', text: 'white' },       // purple
+      messageCycle: { bg: '#ec4899', text: 'white' },  // pink
+      pointing: { bg: '#14b8a6', text: 'white' },      // teal
+      tracking: { bg: '#6b7280', text: 'white' },      // gray (won't show - excluded)
+      autoplay: { bg: '#ef4444', text: 'white' },      // red
+      config: { bg: '#06b6d4', text: 'black' },        // cyan
+    };
+    
+    pointy.on('all', (data) => {
+      if (!logEventsEnabled) return;
+      
+      // Skip 'track' event as it fires too frequently
+      if (data.type === 'track') return;
+      
+      const group = Pointy.getEventGroup(data.type) || 'other';
+      const colors = groupColors[group] || { bg: '#6366f1', text: 'white' };
+      
+      console.log(
+        `%c ${group} %c ${data.type} `,
+        `background: ${colors.bg}; color: ${colors.text}; font-weight: bold; border-radius: 3px 0 0 3px; padding: 2px 6px;`,
+        'background: #1e1e2e; color: #a5f3fc; font-weight: bold; border-radius: 0 3px 3px 0; padding: 2px 6px;',
+        data || ''
+      );
+    });
+
+    // Click on bubble to cycle messages
+    pointy.bubble.style.cursor = 'pointer';
+    pointy.bubble.addEventListener('click', () => {
+      if (pointy.getTotalMessages() > 1) {
+        pointy.nextMessage();
+      }
+    });
+
+    // UI elements
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const stepIndicator = document.getElementById('stepIndicator');
+
+    function updateUI() {
+      const current = pointy.getCurrentStep();
+      const total = pointy.getTotalSteps();
+      stepIndicator.textContent = `Step ${current + 1} of ${total}`;
+      prevBtn.disabled = current === 0;
+      nextBtn.textContent = current === total - 1 ? 'Finish' : 'Next';
+      
+      // Sync control values with Pointy state
+      easingSelect.value = pointy.easing;
+      animDurationInput.value = pointy.animationDuration;
+      introFadeInput.value = pointy.introFadeDuration;
+      bubbleFadeInput.value = pointy.bubbleFadeDuration;
+      floatingToggle.classList.toggle('active', pointy.floatingAnimation);
+      msgIntervalInput.value = pointy.messageInterval;
+      msgTransitionInput.value = pointy.messageTransitionDuration;
+      initialPositionSelect.value = pointy.initialPosition;
+      initialPosOffsetInput.value = pointy.initialPositionOffset;
+      offsetXInput.value = pointy.offsetX;
+      offsetYInput.value = pointy.offsetY;
+      trackingToggle.classList.toggle('active', pointy.tracking);
+      trackingFpsInput.value = pointy.trackingFps;
+      resetOnCompleteToggle.classList.toggle('active', pointy.resetOnComplete);
+      hideOnCompleteToggle.classList.toggle('active', pointy.hideOnComplete);
+      autoplayInput.value = pointy.autoplay || 0;
+      autoplayToggle.classList.toggle('active', pointy.autoplayEnabled && pointy.isAutoplayActive());
+      waitForMessagesToggle.classList.toggle('active', pointy.autoplayWaitForMessages);
+      visibilityToggle.classList.toggle('active', pointy.isVisible);
+    }
+
+    // Event listeners
+    prevBtn.addEventListener('click', () => {
+      if (!pointy.isVisible) {
+        pointy.show();
+      }
+      pointy.prev();
+      updateUI();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (nextBtn.textContent === 'Restart') {
+        pointy.goToStep(0);
+        pointy.show();
+        updateUI();
+      } else {
+        pointy.next();
+      }
+    });
+
+    // Easing selector
+    const easingSelect = document.getElementById('easingSelect');
+    easingSelect.addEventListener('change', () => {
+      pointy.setEasing(easingSelect.value);
+    });
+
+    // Animation Duration input
+    const animDurationInput = document.getElementById('animDurationInput');
+    animDurationInput.addEventListener('input', () => {
+      const value = parseInt(animDurationInput.value, 10);
+      if (value >= 100) {
+        pointy.setAnimationDuration(value);
+      }
+    });
+
+    // Intro Fade Duration input
+    const introFadeInput = document.getElementById('introFadeInput');
+    introFadeInput.addEventListener('input', () => {
+      const value = parseInt(introFadeInput.value, 10);
+      if (value >= 0) {
+        pointy.setIntroFadeDuration(value);
+      }
+    });
+
+    // Bubble Fade Duration input
+    const bubbleFadeInput = document.getElementById('bubbleFadeInput');
+    bubbleFadeInput.addEventListener('input', () => {
+      const value = parseInt(bubbleFadeInput.value, 10);
+      if (value >= 0) {
+        pointy.setBubbleFadeDuration(value);
+      }
+    });
+
+    // Floating Animation toggle
+    const floatingToggle = document.getElementById('floatingToggle');
+    floatingToggle.addEventListener('click', () => {
+      floatingToggle.classList.toggle('active');
+      pointy.setFloatingAnimation(floatingToggle.classList.contains('active'));
+    });
+
+    // Control Panel Collapse
+    const controlPanel = document.getElementById('controlPanel');
+    const controlPanelHeader = document.getElementById('controlPanelHeader');
+    controlPanelHeader.addEventListener('click', () => {
+      controlPanel.classList.toggle('collapsed');
+    });
+
+    // Visibility Toggle (Show/Hide)
+    const visibilityToggle = document.getElementById('visibilityToggle');
+    visibilityToggle.addEventListener('click', () => {
+      visibilityToggle.classList.toggle('active');
+      if (visibilityToggle.classList.contains('active')) {
+        pointy.show();
+      } else {
+        pointy.hide();
+      }
+    });
+
+    // Sync visibility toggle with pointy visibility events
+    pointy.on('show', () => {
+      visibilityToggle.classList.add('active');
+    });
+    pointy.on('hide', () => {
+      visibilityToggle.classList.remove('active');
+    });
+
+    // Message Interval input
+    const msgIntervalInput = document.getElementById('msgIntervalInput');
+    msgIntervalInput.addEventListener('input', () => {
+      const value = parseInt(msgIntervalInput.value, 10);
+      if (value >= 500) {
+        pointy.setMessageInterval(value);
+      }
+    });
+
+    // Message Transition Duration input
+    const msgTransitionInput = document.getElementById('msgTransitionInput');
+    msgTransitionInput.addEventListener('input', () => {
+      const value = parseInt(msgTransitionInput.value, 10);
+      if (value >= 100) {
+        pointy.setMessageTransitionDuration(value);
+      }
+    });
+
+    // Initial Position select
+    const initialPositionSelect = document.getElementById('initialPositionSelect');
+    initialPositionSelect.addEventListener('change', () => {
+      pointy.setInitialPosition(initialPositionSelect.value);
+      // Animate from new initial position to current target
+      pointy.animateToInitialPosition();
+    });
+
+    // Initial Position Offset input
+    const initialPosOffsetInput = document.getElementById('initialPosOffsetInput');
+    initialPosOffsetInput.addEventListener('input', () => {
+      const value = parseInt(initialPosOffsetInput.value, 10);
+      pointy.setInitialPositionOffset(value);
+      // Animate from new initial position to current target
+      pointy.animateToInitialPosition();
+    });
+
+    // Offset X input
+    const offsetXInput = document.getElementById('offsetXInput');
+    offsetXInput.addEventListener('input', () => {
+      const value = parseInt(offsetXInput.value, 10);
+      pointy.setOffset(value, pointy.offsetY);
+    });
+
+    // Offset Y input
+    const offsetYInput = document.getElementById('offsetYInput');
+    offsetYInput.addEventListener('input', () => {
+      const value = parseInt(offsetYInput.value, 10);
+      pointy.setOffset(pointy.offsetX, value);
+    });
+
+    // Tracking toggle
+    const trackingToggle = document.getElementById('trackingToggle');
+    trackingToggle.addEventListener('click', () => {
+      const newValue = !trackingToggle.classList.contains('active');
+      pointy.setTracking(newValue);
+      trackingToggle.classList.toggle('active', newValue);
+      saveConfigToUrl();
+    });
+
+    // Tracking FPS input
+    const trackingFpsInput = document.getElementById('trackingFpsInput');
+    trackingFpsInput.addEventListener('input', () => {
+      const value = parseInt(trackingFpsInput.value, 10);
+      if (value >= 0) {
+        pointy.setTrackingFps(value);
+        statsTrackingFps.textContent = value === 0 ? 'Unlimited' : value;
+        saveConfigToUrl();
+      }
+    });
+
+    // Reset on Complete toggle
+    const resetOnCompleteToggle = document.getElementById('resetOnCompleteToggle');
+    resetOnCompleteToggle.addEventListener('click', () => {
+      resetOnCompleteToggle.classList.toggle('active');
+      pointy.setResetOnComplete(resetOnCompleteToggle.classList.contains('active'));
+      saveConfigToUrl();
+    });
+
+    // Hide on Complete toggle
+    const hideOnCompleteToggle = document.getElementById('hideOnCompleteToggle');
+    hideOnCompleteToggle.addEventListener('click', () => {
+      const newValue = !hideOnCompleteToggle.classList.contains('active');
+      pointy.setHideOnComplete(newValue);
+      hideOnCompleteToggle.classList.toggle('active', newValue);
+      saveConfigToUrl();
+    });
+
+    // Autoplay interval input
+    const autoplayInput = document.getElementById('autoplayInput');
+    autoplayInput.addEventListener('input', () => {
+      const value = parseInt(autoplayInput.value, 10) || 0;
+      pointy.setAutoplayInterval(value > 0 ? value : null);
+      saveConfigToUrl();
+    });
+
+    // Autoplay toggle
+    const autoplayToggle = document.getElementById('autoplayToggle');
+    autoplayToggle.addEventListener('click', () => {
+      if (pointy.autoplayEnabled) {
+        pointy.stopAutoplay();
+        autoplayToggle.classList.remove('active');
+      } else {
+        const interval = parseInt(autoplayInput.value, 10) || 3000;
+        if (!pointy.autoplay) {
+          pointy.autoplay = interval;
+          autoplayInput.value = interval;
+        }
+        pointy.startAutoplay();
+        autoplayToggle.classList.add('active');
+      }
+      saveConfigToUrl();
+    });
+
+    // Sync autoplay toggle with events
+    pointy.on('autoplayStart', () => autoplayToggle.classList.add('active'));
+    pointy.on('autoplayStop', () => autoplayToggle.classList.remove('active'));
+    pointy.on('autoplayPause', () => autoplayToggle.classList.remove('active'));
+    pointy.on('autoplayResume', () => autoplayToggle.classList.add('active'));
+
+    // Wait for Messages toggle
+    const waitForMessagesToggle = document.getElementById('waitForMessagesToggle');
+    waitForMessagesToggle.addEventListener('click', () => {
+      const newValue = !waitForMessagesToggle.classList.contains('active');
+      pointy.setAutoplayWaitForMessages(newValue);
+      waitForMessagesToggle.classList.toggle('active', newValue);
+      saveConfigToUrl();
+    });
+
+    // Point To Custom button
+    const pointToBtn = document.getElementById('pointToBtn');
+    pointToBtn.addEventListener('click', () => {
+      pointy.pointTo('#customTarget', 'Look at this special target! 🎯');
+    });
+
+    // Restart button
+    const restartBtn = document.getElementById('restartBtn');
+    restartBtn.addEventListener('click', () => {
+      pointy.restart();
+      updateUI();
+    });
+
+    // Random Message button
+    const randomMessages = [
+      'Hello there! 👋',
+      'Random message appeared!',
+      'Surprise! 🎉',
+      'Did you expect this?',
+      'Magic words ✨',
+      'Keep clicking<br>for more!',
+      'Pointy says hi!',
+      'Another random thought...',
+      'JavaScript is fun! 🚀',
+      'Almost done...<br>maybe? 🤔',
+      'This is a longer message<br>that spans multiple lines<br>to test the bubble!',
+      'Short one',
+      'Wow, you really like<br>clicking buttons,<br>don\'t you?',
+      '🎯',
+      'The quick brown fox<br>jumps over the lazy dog',
+      'Lorem ipsum?<br>Nah, we do real<br>messages here',
+      'Fun fact:<br>Pointy was made<br>with love ❤️',
+      'Try clicking the bubble<br>when there are<br>multiple messages!',
+      'Pro tip:<br>Shift+click for<br>multi-message mode',
+      'Is this the real life?<br>Is this just fanta-sea? 🎵',
+      'I could do this all day',
+      'Nice click! 👍',
+      '42<br>The answer<br>to everything',
+      'Beep boop 🤖',
+      'Coffee break? ☕',
+      'Achievement unlocked! 🏆<br>You found a<br>random message!'
+    ];
+    
+    const randomMsgBtn = document.getElementById('randomMsgBtn');
+    const randomMsgDropdown = document.getElementById('randomMsgDropdown');
+    const randomMsgMenu = document.getElementById('randomMsgMenu');
+    let messageMode = 'single'; // 'single' or 'multi'
+
+    // Dropdown toggle
+    randomMsgDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      randomMsgMenu.classList.toggle('open');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+      randomMsgMenu.classList.remove('open');
+    });
+
+    // Dropdown item selection
+    randomMsgMenu.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        messageMode = item.dataset.mode;
+        // Update active state
+        randomMsgMenu.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        randomMsgMenu.classList.remove('open');
+        // Update button text
+        randomMsgBtn.textContent = messageMode === 'multi' ? '🎲 Multi Message' : '🎲 Single Message';
+      });
+    });
+
+    // Easter egg chance (starts at 1%, increases by 0.5% each click, resets on trigger)
+    let easterEggChance = 0.01;
+    const EASTER_EGG_INCREMENT = 0.005; // +0.5% per click
+    const EASTER_EGG_MAX = 0.25; // Cap at 25%
+
+    randomMsgBtn.addEventListener('click', () => {
+      if (messageMode === 'multi') {
+        const shuffled = [...randomMessages].sort(() => Math.random() - 0.5);
+        pointy.setContent(shuffled.slice(0, 3)); // Send 3 random messages
+      } else {
+        // Pseudo-random easter egg with increasing chance
+        if (Math.random() < easterEggChance) {
+          pointy.setContent('Click again to summon the Flying Spaghetti Monster 🍝');
+          easterEggChance = 0.01; // Reset chance after triggering
+        } else {
+          const randomMsg = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+          pointy.setContent(randomMsg);
+          // Increase chance for next time (capped)
+          easterEggChance = Math.min(easterEggChance + EASTER_EGG_INCREMENT, EASTER_EGG_MAX);
+        }
+      }
+    });
+
+    // ============================================
+    // Configuration Persistence & Sharing
+    // ============================================
+    
+    // Get current config as object
+    function getCurrentConfig() {
+      return {
+        easing: pointy.easing,
+        animationDuration: pointy.animationDuration,
+        introFadeDuration: pointy.introFadeDuration,
+        bubbleFadeDuration: pointy.bubbleFadeDuration,
+        floatingAnimation: pointy.floatingAnimation,
+        messageInterval: pointy.messageInterval,
+        messageTransitionDuration: pointy.messageTransitionDuration,
+        initialPosition: typeof pointy.initialPosition === 'string' ? pointy.initialPosition : 'center',
+        initialPositionOffset: pointy.initialPositionOffset,
+        offsetX: pointy.offsetX,
+        offsetY: pointy.offsetY,
+        tracking: pointy.tracking,
+        trackingFps: pointy.trackingFps,
+        resetOnComplete: pointy.resetOnComplete,
+        hideOnComplete: pointy.hideOnComplete,
+        autoplayInterval: pointy.autoplay || 0,
+        autoplayEnabled: pointy.autoplayEnabled,
+        autoplayWaitForMessages: pointy.autoplayWaitForMessages
+      };
+    }
+    
+    // Apply config from object (before show)
+    function applyConfigBeforeShow(config) {
+      if (config.easing) pointy.easing = config.easing;
+      if (config.animationDuration) pointy.animationDuration = Number(config.animationDuration);
+      if (config.introFadeDuration !== undefined) pointy.introFadeDuration = Number(config.introFadeDuration);
+      if (config.bubbleFadeDuration !== undefined) pointy.bubbleFadeDuration = Number(config.bubbleFadeDuration);
+      if (config.floatingAnimation !== undefined) pointy.floatingAnimation = config.floatingAnimation === 'true' || config.floatingAnimation === true;
+      if (config.messageInterval) pointy.messageInterval = Number(config.messageInterval);
+      if (config.messageTransitionDuration) pointy.messageTransitionDuration = Number(config.messageTransitionDuration);
+      if (config.initialPosition) pointy.initialPosition = config.initialPosition;
+      if (config.initialPositionOffset !== undefined) pointy.initialPositionOffset = Number(config.initialPositionOffset);
+      if (config.offsetX !== undefined) pointy.offsetX = Number(config.offsetX);
+      if (config.offsetY !== undefined) pointy.offsetY = Number(config.offsetY);
+      if (config.tracking !== undefined) pointy.tracking = config.tracking === 'true' || config.tracking === true;
+      if (config.trackingFps !== undefined) pointy.trackingFps = Number(config.trackingFps);
+      if (config.resetOnComplete !== undefined) pointy.resetOnComplete = config.resetOnComplete === 'true' || config.resetOnComplete === true;
+      if (config.hideOnComplete !== undefined) pointy.hideOnComplete = config.hideOnComplete === 'true' || config.hideOnComplete === true;
+      if (config.autoplayInterval !== undefined) pointy.autoplay = Number(config.autoplayInterval) || null;
+      if (config.autoplay !== undefined && config.autoplayInterval === undefined) pointy.autoplay = Number(config.autoplay) || null;
+      if (config.autoplayEnabled === true || config.autoplayEnabled === 'true') pointy.autoplayEnabled = true;
+      if (config.autoplayWaitForMessages !== undefined) pointy.autoplayWaitForMessages = config.autoplayWaitForMessages === 'true' || config.autoplayWaitForMessages === true;
+      
+      // Update CSS variables
+      pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-duration`, `${pointy.animationDuration}ms`);
+      pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-easing`, pointy._resolveEasing(pointy.easing));
+      pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-bubble-fade`, `${pointy.bubbleFadeDuration}ms`);
+      if (!pointy.floatingAnimation) pointy.container.style.animationPlayState = 'paused';
+    }
+    
+    // Load config from URL before show
+    function loadConfigFromUrlBeforeShow() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.toString() === '') return;
+      
+      const config = {};
+      params.forEach((value, key) => {
+        if (value === 'true') config[key] = true;
+        else if (value === 'false') config[key] = false;
+        else if (!isNaN(Number(value)) && value !== '') config[key] = Number(value);
+        else config[key] = value;
+      });
+      
+      if (Object.keys(config).length > 0) {
+        applyConfigBeforeShow(config);
+      }
+    }
+    
+    // Load config BEFORE show() so initialPosition works correctly
+    loadConfigFromUrlBeforeShow();
+
+    // Show pointy on load
+    pointy.show();
+    updateUI();
+
+    // Stats Panel Toggle
+    const statsToggle = document.getElementById('statsToggle');
+    const statsPanel = document.getElementById('statsPanel');
+    
+    statsToggle.addEventListener('click', () => {
+      statsToggle.classList.toggle('active');
+      statsPanel.classList.toggle('hidden');
+    });
+
+    // Log Events Toggle
+    const logEventsToggle = document.getElementById('logEventsToggle');
+    logEventsToggle.addEventListener('click', () => {
+      logEventsEnabled = !logEventsEnabled;
+      logEventsToggle.classList.toggle('active', logEventsEnabled);
+    });
+
+    // Performance Stats
+    const statsFps = document.getElementById('statsFps');
+    const statsFrameTime = document.getElementById('statsFrameTime');
+    const statsUpdates = document.getElementById('statsUpdates');
+    const statsTrackingFps = document.getElementById('statsTrackingFps');
+    const statsMemory = document.getElementById('statsMemory');
+    
+    // Show tracking FPS setting
+    statsTrackingFps.textContent = pointy.trackingFps === 0 ? 'Unlimited' : pointy.trackingFps;
+    
+    // ============================================
+    // Configuration Persistence & Sharing
+    // ============================================
+    
+    // Get current config as object
+    function getCurrentConfig() {
+      return {
+        easing: pointy.easing,
+        animationDuration: pointy.animationDuration,
+        introFadeDuration: pointy.introFadeDuration,
+        bubbleFadeDuration: pointy.bubbleFadeDuration,
+        floatingAnimation: pointy.floatingAnimation,
+        messageInterval: pointy.messageInterval,
+        messageTransitionDuration: pointy.messageTransitionDuration,
+        initialPosition: typeof pointy.initialPosition === 'string' ? pointy.initialPosition : 'center',
+        initialPositionOffset: pointy.initialPositionOffset,
+        offsetX: pointy.offsetX,
+        offsetY: pointy.offsetY,
+        tracking: pointy.tracking,
+        trackingFps: pointy.trackingFps,
+        resetOnComplete: pointy.resetOnComplete,
+        hideOnComplete: pointy.hideOnComplete,
+        autoplayInterval: pointy.autoplay || 0,
+        autoplayEnabled: pointy.autoplayEnabled,
+        autoplayWaitForMessages: pointy.autoplayWaitForMessages
+      };
+    }
+    
+    // Apply config from object
+    function applyConfig(config) {
+      if (config.easing) pointy.setEasing(config.easing);
+      if (config.animationDuration) pointy.setAnimationDuration(config.animationDuration);
+      if (config.introFadeDuration !== undefined) pointy.setIntroFadeDuration(config.introFadeDuration);
+      if (config.bubbleFadeDuration !== undefined) pointy.setBubbleFadeDuration(config.bubbleFadeDuration);
+      if (config.floatingAnimation !== undefined) pointy.setFloatingAnimation(config.floatingAnimation);
+      if (config.messageInterval) pointy.setMessageInterval(config.messageInterval);
+      if (config.messageTransitionDuration) pointy.setMessageTransitionDuration(config.messageTransitionDuration);
+      if (config.initialPosition) pointy.setInitialPosition(config.initialPosition);
+      if (config.initialPositionOffset !== undefined) pointy.setInitialPositionOffset(config.initialPositionOffset);
+      if (config.offsetX !== undefined && config.offsetY !== undefined) pointy.setOffset(config.offsetX, config.offsetY);
+      if (config.tracking !== undefined) pointy.setTracking(config.tracking === 'true' || config.tracking === true);
+      if (config.trackingFps !== undefined) pointy.setTrackingFps(Number(config.trackingFps));
+      if (config.resetOnComplete !== undefined) pointy.setResetOnComplete(config.resetOnComplete === 'true' || config.resetOnComplete === true);
+      if (config.hideOnComplete !== undefined) pointy.setHideOnComplete(config.hideOnComplete === 'true' || config.hideOnComplete === true);
+      // Set autoplay interval without starting (setAutoplayInterval)
+      if (config.autoplayInterval !== undefined) {
+        pointy.autoplay = Number(config.autoplayInterval) || null;
+      }
+      // Handle legacy autoplay param (for backwards compatibility)
+      if (config.autoplay !== undefined && config.autoplayInterval === undefined) {
+        pointy.autoplay = Number(config.autoplay) || null;
+      }
+      // Only start autoplay if explicitly enabled
+      if (config.autoplayEnabled === true || config.autoplayEnabled === 'true') {
+        pointy.autoplayEnabled = true;
+        if (pointy.autoplay && pointy.isVisible) {
+          pointy.startAutoplay();
+        }
+      }
+      if (config.autoplayWaitForMessages !== undefined) pointy.setAutoplayWaitForMessages(config.autoplayWaitForMessages === 'true' || config.autoplayWaitForMessages === true);
+      updateUI();
+    }
+    
+    // Save config to URL
+    function saveConfigToUrl() {
+      const config = getCurrentConfig();
+      const params = new URLSearchParams();
+      Object.entries(config).forEach(([key, value]) => {
+        params.set(key, String(value));
+      });
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+    
+    // Load config from URL
+    function loadConfigFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.toString() === '') return;
+      
+      const config = {};
+      params.forEach((value, key) => {
+        // Parse booleans and numbers
+        if (value === 'true') config[key] = true;
+        else if (value === 'false') config[key] = false;
+        else if (!isNaN(Number(value)) && value !== '') config[key] = Number(value);
+        else config[key] = value;
+      });
+      
+      if (Object.keys(config).length > 0) {
+        applyConfig(config);
+      }
+    }
+    
+    // Generate code snippet
+    function generateCodeSnippet() {
+      const config = getCurrentConfig();
+      const defaults = {
+        easing: 'default',
+        animationDuration: 1000,
+        introFadeDuration: 1000,
+        bubbleFadeDuration: 500,
+        floatingAnimation: true,
+        messageInterval: 2500,
+        messageTransitionDuration: 500,
+        initialPosition: 'center',
+        initialPositionOffset: 32,
+        offsetX: 20,
+        offsetY: 16,
+        trackingFps: 60,
+        resetOnComplete: true,
+        autoplay: 0
+      };
+      
+      // Only include non-default values
+      const nonDefaults = {};
+      Object.entries(config).forEach(([key, value]) => {
+        if (value !== defaults[key]) {
+          nonDefaults[key] = value;
+        }
+      });
+      
+      let code = `const pointy = new Pointy({
+  steps: [
+    { target: '#element1', content: 'First step' },
+    { target: '#element2', content: 'Second step' },
+  ],`;
+      
+      Object.entries(nonDefaults).forEach(([key, value]) => {
+        const valueStr = typeof value === 'string' ? `'${value}'` : value;
+        code += `\n  ${key}: ${valueStr},`;
+      });
+      
+      code += `\n});
+
+pointy.show();`;
+      
+      return code;
+    }
+    
+    // Copy Code button
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
+    copyCodeBtn.addEventListener('click', async () => {
+      const code = generateCodeSnippet();
+      try {
+        await navigator.clipboard.writeText(code);
+        const originalText = copyCodeBtn.textContent;
+        copyCodeBtn.textContent = '✅ Copied!';
+        setTimeout(() => {
+          copyCodeBtn.textContent = originalText;
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
+    
+    // Auto-save to URL on any config change
+    const configEvents = [
+      'easingChange', 'animationDurationChange', 'introFadeDurationChange',
+      'bubbleFadeDurationChange', 'floatingAnimationChange', 'messageIntervalChange',
+      'messageTransitionDurationChange', 'initialPositionChange', 'initialPositionOffsetChange',
+      'offsetChange', 'resetOnCompleteChange', 'autoplayChange'
+    ];
+    configEvents.forEach(event => {
+      pointy.on(event, () => saveConfigToUrl());
+    });
+
+    // ============================================
+    // Performance Stats
+    // ============================================
+    
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+    let fps = 0;
+    let updateCount = 0;
+    
+    // Monkey-patch updatePosition to count calls
+    const originalUpdatePosition = pointy.updatePosition.bind(pointy);
+    pointy.updatePosition = function() {
+      updateCount++;
+      return originalUpdatePosition();
+    };
+    
+    function updateStats() {
+      const now = performance.now();
+      const frameTime = now - lastFrameTime;
+      lastFrameTime = now;
+      frameCount++;
+      
+      // Update FPS every 500ms
+      if (now - lastFpsUpdate >= 500) {
+        fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
+        frameCount = 0;
+        lastFpsUpdate = now;
+        
+        // FPS display with color
+        statsFps.textContent = fps;
+        statsFps.className = 'stats-value ' + (fps >= 55 ? 'good' : fps >= 30 ? 'warn' : 'bad');
+        
+        // Updates per second
+        const updatesPerSec = Math.round(updateCount * 1000 / 500);
+        statsUpdates.textContent = updatesPerSec;
+        statsUpdates.className = 'stats-value ' + (updatesPerSec <= 60 ? 'good' : updatesPerSec <= 120 ? 'warn' : 'bad');
+        updateCount = 0;
+      }
+      
+      // Frame time
+      statsFrameTime.textContent = frameTime.toFixed(1) + 'ms';
+      statsFrameTime.className = 'stats-value ' + (frameTime <= 17 ? 'good' : frameTime <= 33 ? 'warn' : 'bad');
+      
+      // Memory (if available)
+      if (performance.memory) {
+        const usedMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+        statsMemory.textContent = usedMB + 'MB';
+        statsMemory.className = 'stats-value ' + (usedMB < 50 ? 'good' : usedMB < 100 ? 'warn' : 'bad');
+      } else {
+        statsMemory.textContent = 'N/A';
+      }
+      
+      requestAnimationFrame(updateStats);
+    }
+    
+    requestAnimationFrame(updateStats);
+  </script>
+</body>
+</html>

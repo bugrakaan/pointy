@@ -1,0 +1,28 @@
+# Development files
+docs/
+.git/
+.gitignore
+.DS_Store
+node_modules/
+*.log
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+
+# Config files not needed in package
+rollup.config.js
+.eslintrc*
+.prettierrc*
+
+# GitHub specific
+.github/

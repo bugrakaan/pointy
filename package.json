@@ -1,0 +1,64 @@
+{
+  "name": "@diabolic/pointy",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A lightweight, dependency-free JavaScript library for creating animated tooltips with a pointing cursor. Perfect for product tours, onboarding flows, and feature highlights.",
+  "main": "dist/pointy.js",
+  "module": "dist/pointy.esm.js",
+  "types": "dist/pointy.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/pointy.esm.js",
+      "require": "./dist/pointy.js",
+      "types": "./dist/pointy.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bugrakaan/pointy.git"
+  },
+  "keywords": [
+    "tooltip",
+    "tour",
+    "onboarding",
+    "product-tour",
+    "walkthrough",
+    "guided-tour",
+    "pointer",
+    "cursor",
+    "animation",
+    "vanilla-js",
+    "no-dependencies",
+    "lightweight",
+    "tutorial",
+    "help",
+    "guide",
+    "feature-highlight",
+    "user-onboarding"
+  ],
+  "author": "Diabolic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bugrakaan/pointy/issues"
+  },
+  "homepage": "https://bugrakaan.github.io/pointy/",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.0",
+    "rollup-plugin-copy": "^3.5.0"
+  },
+  "dependencies": {}
+}
