@@ -925,7 +925,8 @@
         updateUI();
       },
       onComplete: () => {
-        pointy.hide();
+        // hideOnComplete option now handles auto-hiding
+        // Just update UI to show restart button
         nextBtn.textContent = 'Restart';
       }
     });

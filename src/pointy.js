@@ -495,7 +495,7 @@ class Pointy {
 
     this.pointer = document.createElement('div');
     this.pointer.className = this.classNames.pointer;
-    this.pointer.innerHTML = this.pointerSvg;
+    Pointy.renderContent(this.pointer, this.pointerSvg);
 
     this.bubble = document.createElement('div');
     this.bubble.className = this.classNames.bubble;
@@ -860,6 +860,12 @@ class Pointy {
     
     // Stop message cycle
     this._stopMessageCycle();
+    
+    // Clear hide on complete timeout if exists
+    if (this._hideOnCompleteTimeoutId) {
+      clearTimeout(this._hideOnCompleteTimeoutId);
+      this._hideOnCompleteTimeoutId = null;
+    }
     
     // Pause floating animation during movement
     this.container.classList.add(this.classNames.moving);
@@ -1521,20 +1527,20 @@ class Pointy {
 
   /**
    * Set custom pointer SVG
-   * @param {string} svg - SVG markup string
+   * @param {string|React.ReactNode} svg - SVG markup string or React element
    */
   setPointerSvg(svg) {
     const oldSvg = this.pointerSvg;
     if (oldSvg === svg) return;
     
     this.pointerSvg = svg;
-    this.pointer.innerHTML = svg;
+    Pointy.renderContent(this.pointer, svg);
     this._emit('pointerSvgChange', { from: oldSvg, to: svg });
   }
 
   /**
    * Get current pointer SVG
-   * @returns {string} - Current SVG markup
+   * @returns {string|React.ReactNode} - Current SVG markup or React element
    */
   getPointerSvg() {
     return this.pointerSvg;
@@ -1653,7 +1659,6 @@ class Pointy {
    */
   _scheduleAutoplay() {
     if (!this.autoplay || !this.autoplayEnabled || this._autoplayPaused || !this.isVisible) return;
-    if (this.currentStepIndex >= this.steps.length - 1) return; // Don't schedule past last step
     
     const step = this.steps[this.currentStepIndex];
     const hasMultipleMessages = this.currentMessages.length > 1 && this.messageInterval;
@@ -1683,7 +1688,6 @@ class Pointy {
    */
   _scheduleAutoplayAfterMessages() {
     if (!this.autoplay || !this.autoplayEnabled || this._autoplayPaused || !this.isVisible) return;
-    if (this.currentStepIndex >= this.steps.length - 1) return;
     
     // Use a short delay before advancing (user can read the last message during messageInterval already)
     const delay = 300; // Brief pause after last message before advancing
@@ -1854,19 +1858,30 @@ class Pointy {
         this._emit('autoplayComplete', { totalSteps: this.steps.length });
       }
       
-      // Reset position to center if enabled
+      // Handle post-completion behavior based on settings
+      // Note: hideOnComplete is respected for both autoplay and manual navigation
       if (this.resetOnComplete) {
         this.reset();
-      }
-      
-      // Auto-hide after complete if enabled
-      if (this.hideOnComplete) {
-        const delay = this.hideOnCompleteDelay !== null ? this.hideOnCompleteDelay : this.animationDuration;
-        const source = wasAutoplayActive ? 'autoplay' : 'manual';
-        this._hideOnCompleteTimeoutId = setTimeout(() => {
-          this.hide();
-          this._emit('autoHide', { delay: delay, source: source });
-        }, delay);
+        
+        // Schedule hide after reset animation completes (only if hideOnComplete is true)
+        if (this.hideOnComplete) {
+          const hideDelay = this.hideOnCompleteDelay !== null ? this.hideOnCompleteDelay : this.animationDuration;
+          const source = wasAutoplayActive ? 'autoplay' : 'manual';
+          this._hideOnCompleteTimeoutId = setTimeout(() => {
+            this.hide();
+            this._emit('autoHide', { delay: hideDelay, source: source });
+          }, this.animationDuration + hideDelay);
+        }
+      } else {
+        // No reset: hide immediately after delay (only if hideOnComplete is true)
+        if (this.hideOnComplete) {
+          const delay = this.hideOnCompleteDelay !== null ? this.hideOnCompleteDelay : this.animationDuration;
+          const source = wasAutoplayActive ? 'autoplay' : 'manual';
+          this._hideOnCompleteTimeoutId = setTimeout(() => {
+            this.hide();
+            this._emit('autoHide', { delay: delay, source: source });
+          }, delay);
+        }
       }
       
       if (this.onComplete) {

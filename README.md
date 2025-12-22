@@ -532,9 +532,25 @@ const pointy = new Pointy({
 pointy.setPointerSvg('<svg>...</svg>');
 ```
 
+**React/JSX Support:**
+
+```jsx
+// Use React elements as pointer SVG
+const CustomPointer = () => (
+  <svg width="40" height="40" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="15" fill="#ff6b6b"/>
+  </svg>
+);
+
+const pointy = new Pointy({
+  pointerSvg: <CustomPointer />,
+  steps: [...]
+});
+```
+
 ## ⚛️ React Integration
 
-Pointy supports React elements as content:
+Pointy supports React elements as content and pointer SVG:
 
 ```jsx
 const pointy = new Pointy({

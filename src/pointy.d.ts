@@ -157,8 +157,8 @@ interface PointyOptions {
   classNames?: Partial<PointyClassNames>;
   /** CSS variable prefix (default: classPrefix) */
   cssVarPrefix?: string;
-  /** Custom SVG markup for pointer */
-  pointerSvg?: string;
+  /** Custom SVG markup for pointer or React element */
+  pointerSvg?: string | React.ReactNode;
 
   // Callbacks
   /** Called when step changes */
@@ -472,8 +472,8 @@ declare class Pointy {
   hideOnCompleteDelay: number | null;
   /** Message auto-cycle interval */
   messageInterval: number | null;
-  /** Current pointer SVG */
-  pointerSvg: string;
+  /** Current pointer SVG or React element */
+  pointerSvg: string | React.ReactNode;
 
   // State properties (readonly)
   /** Whether pointer is currently visible */
@@ -724,13 +724,13 @@ declare class Pointy {
   setAutoplayWaitForMessages(wait: boolean): void;
   /**
    * Set custom pointer SVG
-   * @param svg - SVG markup string
+   * @param svg - SVG markup string or React element
    */
-  setPointerSvg(svg: string): void;
+  setPointerSvg(svg: string | React.ReactNode): void;
 
   // Getter methods
-  /** Get current pointer SVG */
-  getPointerSvg(): string;
+  /** Get current pointer SVG or React element */
+  getPointerSvg(): string | React.ReactNode;
   /** Get class names object */
   getClassNames(): PointyClassNames;
   /** Get class prefix */
