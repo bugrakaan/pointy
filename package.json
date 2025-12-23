@@ -1,6 +1,6 @@
 {
   "name": "@diabolic/pointy",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "A lightweight, dependency-free JavaScript library for creating animated tooltips with a pointing cursor. Perfect for product tours, onboarding flows, and feature highlights.",
   "main": "dist/pointy.js",

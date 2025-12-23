@@ -1,6 +1,6 @@
 /**
  * Pointy - A lightweight tooltip library with animated pointer
- * @version 1.0.1
+ * @version 1.0.3
  * @license MIT
  */
 (function (global, factory) {
