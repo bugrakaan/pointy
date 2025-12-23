@@ -19,6 +19,7 @@
  * @options
  * - steps {Array<{target, content, direction?, duration?}>} - Tour steps
  * - target {string|HTMLElement} - Initial target element
+ * - content {string|string[]} - Initial content/messages (single-step use)
  * - offsetX {number} - Horizontal offset from target (default: 20)
  * - offsetY {number} - Vertical offset from target (default: 16)
  * - trackingFps {number} - Position update FPS, 0 = unlimited (default: 60)
@@ -501,6 +502,8 @@ class Pointy {
 
     this.bubble = document.createElement('div');
     this.bubble.className = this.classNames.bubble;
+    // Set initial bubble position for pointing up (default)
+    this.bubble.style.transform = 'translateY(28px)';
     
     this.bubbleText = document.createElement('span');
     this.bubbleText.className = this.classNames.bubbleText;
@@ -690,7 +693,7 @@ class Pointy {
       } else {
         // Default: pointing up
         this.pointer.style.transform = 'rotate(0deg)';
-        this.bubble.style.transform = 'translateY(0)';
+        this.bubble.style.transform = 'translateY(28px)';
       }
       
       this.container.style.display = 'flex';
@@ -1027,10 +1030,34 @@ class Pointy {
       return;
     }
     
-    // Show bubble if it was hidden
-    if (this.bubble.style.opacity === '0' && this.isVisible) {
+    // Track if bubble was hidden (needs special handling)
+    const wasHidden = this.bubble.style.opacity === '0';
+    
+    // Show bubble if it was hidden - need to make visible BEFORE measuring
+    if (wasHidden && this.isVisible) {
+      // Temporarily disable ALL transitions for instant position update
+      const oldBubbleTransition = this.bubble.style.transition;
+      const oldPointerTransition = this.pointer.style.transition;
+      this.bubble.style.transition = 'none';
+      this.pointer.style.transition = 'none';
+      
       this.bubble.style.opacity = '1';
       this.bubble.style.pointerEvents = '';
+      
+      // Force reflow to apply opacity
+      this.bubble.offsetHeight;
+      
+      // Update position with bubble visible (so offsetHeight works)
+      this.updatePosition();
+      
+      // Force another reflow to apply position
+      this.bubble.offsetHeight;
+      
+      // Re-enable transitions after a frame
+      requestAnimationFrame(() => {
+        this.bubble.style.transition = oldBubbleTransition;
+        this.pointer.style.transition = oldPointerTransition;
+      });
     }
     
     // Skip if content is the same (only for string content)
@@ -1288,6 +1315,11 @@ class Pointy {
     this.currentMessages[this.currentMessageIndex] = message;
     
     this.updateContent(message, animate);
+    
+    // Ensure position is updated immediately for non-animated changes
+    if (!animate) {
+      this.updatePosition();
+    }
     
     this._emit('messageUpdate', {
       index: this.currentMessageIndex,
