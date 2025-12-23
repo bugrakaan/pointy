@@ -137,8 +137,10 @@ pointy.reset();             // Reset to initial position
 ### Content
 
 ```javascript
-pointy.setContent('New message');
-pointy.setContent(['Message 1', 'Message 2']);
+pointy.setMessages('New message');              // Replace all messages
+pointy.setMessages(['Message 1', 'Message 2']); // Set multiple messages
+
+pointy.setMessage('Updated text');             // Update current message only
 
 pointy.nextMessage();
 pointy.prevMessage();
@@ -169,6 +171,44 @@ pointy.startMessageCycle();
 pointy.stopMessageCycle();
 pointy.pauseMessageCycle();
 pointy.resumeMessageCycle();
+```
+
+### Setters
+
+All setters emit corresponding `*Change` events:
+
+```javascript
+// Animation
+pointy.setEasing('bounce');
+pointy.setAnimationDuration(800);
+pointy.setIntroFadeDuration(500);
+pointy.setBubbleFadeDuration(300);
+pointy.setMessageTransitionDuration(400);
+pointy.setFloatingAnimation(true);
+
+// Position
+pointy.setOffset(30, 20);
+pointy.setInitialPosition('top-left');
+pointy.setInitialPositionOffset(50);
+
+// Tracking
+pointy.setTracking(true);
+pointy.setTrackingFps(30);
+
+// Messages
+pointy.setMessageInterval(2000);
+
+// Autoplay
+pointy.setAutoplayInterval(3000);
+pointy.setAutoplayWaitForMessages(true);
+
+// Completion
+pointy.setResetOnComplete(true);
+pointy.setHideOnComplete(true);
+pointy.setHideOnCompleteDelay(500);
+
+// Styling
+pointy.setPointerSvg('<svg>...</svg>');
 ```
 
 ## Easing Presets
@@ -259,8 +299,8 @@ pointy.on('all', (data) => {
 #### Content
 | Event | Data |
 |-------|------|
-| `contentSet` | `{ messages, total, animated, cyclePaused }` |
-| `messagesSet` | `{ messages, total, cyclePaused }` |
+| `messagesSet` | `{ messages, total, animated, cyclePaused }` |
+| `messageUpdate` | `{ index, message, oldMessage, total, animated }` |
 | `messageChange` | `{ fromIndex, toIndex, message, total, isAuto? }` |
 
 #### Message Cycle

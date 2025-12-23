@@ -515,6 +515,38 @@
     box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
   ">Custom Target</div>
 
+  <!-- Draggable target for tracking test -->
+  <div id="draggableTarget" style="
+    position: absolute;
+    left: 100px;
+    top: 200px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 28px;
+    border-radius: 16px;
+    font-weight: 600;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    cursor: grab;
+    user-select: none;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 180px;
+  ">
+    <span style="font-size: 14px;">🎯 Drag Me!</span>
+    <button id="trackMeBtn" style="
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    ">📍 Point Here</button>
+  </div>
+
   <!-- Control Panel - Top Right -->
   <div class="control-panel" id="controlPanel">
     <div class="control-panel-header" id="controlPanelHeader">
@@ -825,6 +857,60 @@
     customTarget.style.top = `${customPos.y}px`;
     mainContent.appendChild(customTarget);
 
+    // Setup draggable target
+    const draggableTarget = document.getElementById('draggableTarget');
+    const draggablePos = getRandomPosition(positions, 200, 100);
+    positions.push(draggablePos);
+    draggableTarget.style.left = `${draggablePos.x}px`;
+    draggableTarget.style.top = `${draggablePos.y}px`;
+    mainContent.appendChild(draggableTarget);
+    
+    // Make it draggable
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    
+    draggableTarget.addEventListener('mousedown', (e) => {
+      if (e.target.id === 'trackMeBtn') return; // Don't drag when clicking button
+      isDragging = true;
+      draggableTarget.style.cursor = 'grabbing';
+      const rect = draggableTarget.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const mainRect = mainContent.getBoundingClientRect();
+      const newX = e.clientX - mainRect.left - dragOffsetX;
+      const newY = e.clientY - mainRect.top - dragOffsetY;
+      draggableTarget.style.left = `${newX}px`;
+      draggableTarget.style.top = `${newY}px`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        draggableTarget.style.cursor = 'grab';
+      }
+    });
+    
+    // Track Me button
+    const trackMeBtn = document.getElementById('trackMeBtn');
+    trackMeBtn.addEventListener('mouseenter', () => {
+      trackMeBtn.style.background = 'rgba(255,255,255,0.35)';
+    });
+    trackMeBtn.addEventListener('mouseleave', () => {
+      trackMeBtn.style.background = 'rgba(255,255,255,0.2)';
+    });
+    trackMeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof pointy !== 'undefined') {
+        pointy.pointTo('#draggableTarget', 'Now drag me around! The pointer will follow. 🎯');
+      }
+    });
+
     // Shuffle button elements for random tour order
     const shuffledButtons = shuffle(buttonElements);
     
@@ -930,6 +1016,9 @@
         nextBtn.textContent = 'Restart';
       }
     });
+    
+    // Expose to window for console access
+    window.pointyInstance = pointy;
 
     // Log all events for demo purposes
     // Use generic 'all' listener instead of individual events

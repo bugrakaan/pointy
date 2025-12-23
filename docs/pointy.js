@@ -1,6 +1,6 @@
 /**
  * Pointy - A lightweight tooltip library with animated pointer
- * @version 1.0.0
+ * @version 1.0.2
  * @license MIT
  */
 (function (global, factory) {
@@ -84,9 +84,9 @@
    * - introAnimationEnd: Initial fade-in animation completed
    * 
    * Content:
-   * - contentSet: Content updated via setContent()
-   * - messagesSet: New messages array set for step
-   * - messageChange: Message changed (manual or auto)
+   * - messagesSet: Messages array replaced via setMessages()
+   * - messageUpdate: Single message updated via setMessage()
+   * - messageChange: Message changed (navigation or auto-cycle)
    * 
    * Message Cycle:
    * - messageCycleStart: Auto message cycling started
@@ -137,7 +137,7 @@
    * Core: show(), hide(), destroy()
    * Navigation: next(), prev(), goToStep(index), reset(), restart()
    * Custom Target: pointTo(target, content?, direction?)
-   * Content: setContent(content), nextMessage(), prevMessage(), goToMessage(index)
+   * Content: setMessages(content), setMessage(msg), nextMessage(), prevMessage(), goToMessage(index)
    * Message Cycle: startMessageCycle(interval?), stopMessageCycle(), pauseMessageCycle(), resumeMessageCycle()
    * Autoplay: startAutoplay(), stopAutoplay(), pauseAutoplay(), resumeAutoplay()
    * Animation: animateToInitialPosition()
@@ -724,9 +724,17 @@
             
             this._startTracking();
             
-            // Show bubble immediately with fade
+            // Show bubble immediately with fade (only if content is not empty)
+            const hasContent = this.currentMessages.length > 0 && 
+              this.currentMessages.some(m => m !== '' && m !== null && m !== undefined);
+            
             this.bubble.style.transition = `opacity ${this.bubbleFadeDuration}ms ease`;
-            this.bubble.style.opacity = '1';
+            if (hasContent) {
+              this.bubble.style.opacity = '1';
+            } else {
+              this.bubble.style.opacity = '0';
+              this.bubble.style.pointerEvents = 'none';
+            }
             
             // Re-enable transitions after bubble fade completes
             setTimeout(() => {
@@ -755,9 +763,18 @@
             this._startTracking();
             
             // Show bubble with fade after arriving at first target
+            // Show bubble with fade after arriving at first target (only if content is not empty)
             setTimeout(() => {
+              const hasContent = this.currentMessages.length > 0 && 
+                this.currentMessages.some(m => m !== '' && m !== null && m !== undefined);
+              
               this.bubble.style.transition = '';
-              this.bubble.style.opacity = '1';
+              if (hasContent) {
+                this.bubble.style.opacity = '1';
+              } else {
+                this.bubble.style.opacity = '0';
+                this.bubble.style.pointerEvents = 'none';
+              }
               
               // Start message cycle if multi-message
               if (this.messageInterval && this.currentMessages.length > 1 && !this._messageIntervalId) {
@@ -1009,6 +1026,24 @@
     }
 
     updateContent(newContent, animate = true) {
+      // Check if content is empty
+      const isEmpty = newContent === '' || newContent === null || newContent === undefined ||
+        (Array.isArray(newContent) && newContent.length === 0) ||
+        (Array.isArray(newContent) && newContent.every(m => m === '' || m === null || m === undefined));
+      
+      if (isEmpty) {
+        // Hide bubble when content is empty
+        this.bubble.style.opacity = '0';
+        this.bubble.style.pointerEvents = 'none';
+        return;
+      }
+      
+      // Show bubble if it was hidden
+      if (this.bubble.style.opacity === '0' && this.isVisible) {
+        this.bubble.style.opacity = '1';
+        this.bubble.style.pointerEvents = '';
+      }
+      
       // Skip if content is the same (only for string content)
       if (typeof newContent === 'string' && this.bubbleText.innerHTML === newContent) {
         return;
@@ -1030,7 +1065,7 @@
      * @param {boolean} fromStepChange - Whether this is from a step change (internal)
      * @private
      */
-    _setMessages(content, fromStepChange = false) {
+    _applyMessages(content, fromStepChange = false) {
       // Check if cycle was running before
       const wasRunning = this._messageIntervalId !== null;
       
@@ -1044,8 +1079,8 @@
       // Show first message
       this.updateContent(this.currentMessages[0]);
       
-      // Only auto-start cycle on step changes, not on manual setContent
-      // For manual setContent, user must call resumeMessageCycle()
+      // Only auto-start cycle on step changes, not on manual setMessages
+      // For manual setMessages, user must call resumeMessageCycle()
       if (fromStepChange && this.messageInterval && this.currentMessages.length > 1) {
         this._startMessageCycle();
       } else if (wasRunning && this.currentMessages.length > 1) {
@@ -1255,16 +1290,36 @@
     }
 
     /**
-     * Set content programmatically (replaces current messages)
+     * Set/update the current message (at current index)
+     * @param {string} message - New message content
+     * @param {boolean} animate - Whether to animate the change (default: true)
+     */
+    setMessage(message, animate = true) {
+      const oldMessage = this.currentMessages[this.currentMessageIndex];
+      this.currentMessages[this.currentMessageIndex] = message;
+      
+      this.updateContent(message, animate);
+      
+      this._emit('messageUpdate', {
+        index: this.currentMessageIndex,
+        message: message,
+        oldMessage: oldMessage,
+        total: this.currentMessages.length,
+        animated: animate
+      });
+    }
+
+    /**
+     * Set messages programmatically (replaces current messages)
      * @param {string|string[]} content - Single message or array of messages
      * @param {boolean} animate - Whether to animate the change (default: true)
      */
-    setContent(content, animate = true) {
+    setMessages(content, animate = true) {
       // Check if cycle was running before
       const wasRunning = this._messageIntervalId !== null;
       
       if (animate) {
-        this._setMessages(content, false); // false = not from step change
+        this._applyMessages(content, false); // false = not from step change
       } else {
         // Stop any existing auto-cycle
         this._stopMessageCycle();
@@ -1283,7 +1338,7 @@
         }
       }
       
-      this._emit('contentSet', { 
+      this._emit('messagesSet', { 
         messages: this.currentMessages, 
         total: this.currentMessages.length,
         animated: animate,
@@ -1642,6 +1697,10 @@
       // Set direction: step.direction can be 'up', 'down', or undefined (auto)
       this.manualDirection = step.direction || null;
       
+      // Reset velocity tracking for new target
+      this._targetYHistory = [];
+      this.lastTargetY = null;
+      
       // Pause floating animation during movement
       this.container.classList.add(this.classNames.moving);
       if (this.moveTimeout) clearTimeout(this.moveTimeout);
@@ -1669,7 +1728,7 @@
       
       this._emit('move', { index: index, step: step });
       
-      this._setMessages(step.content, true); // true = from step change, auto-start cycle
+      this._applyMessages(step.content, true); // true = from step change, auto-start cycle
       this.targetElement = Pointy.getTargetElement(step.target);
       this.updatePosition();
       
@@ -1962,6 +2021,10 @@
       // Set manual direction (null means auto)
       this.manualDirection = direction || null;
       
+      // Reset velocity tracking for new target
+      this._targetYHistory = [];
+      this.lastTargetY = null;
+      
       // Pause floating animation during movement
       this.container.classList.add(this.classNames.moving);
       if (this.moveTimeout) clearTimeout(this.moveTimeout);
@@ -1978,7 +2041,7 @@
       this.targetElement = toTarget;
       
       if (content !== undefined) {
-        this._setMessages(content, false); // false = not from step change, don't auto-start cycle
+        this._applyMessages(content, false); // false = not from step change, don't auto-start cycle
       }
       
       this.updatePosition();
@@ -2044,7 +2107,7 @@
      * Content:
      * - messagesSet: When messages array is set for a step
      * - messageChange: When current message changes (next/prev message) - includes isAuto flag
-     * - contentSet: When setContent() is called
+     * - messagesSet: When setMessages() is called
      * - messageCycleStart: When auto message cycling starts
      * - messageCycleStop: When auto message cycling stops
      * - messageCyclePause: When message cycling is paused
