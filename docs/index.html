@@ -525,7 +525,7 @@
       <!-- Left Column -->
       <div class="control-section">
         <h4>Visibility</h4>
-        <button class="toggle-btn active" id="visibilityToggle">
+        <button class="toggle-btn active" id="visibilityToggle" title="Show or hide the pointer. When hidden, all animations and tracking pause.">
           <span>Show Pointer</span>
           <div class="toggle-indicator"></div>
         </button>
@@ -533,15 +533,15 @@
       
       <div class="control-section">
         <h4>Messages</h4>
-        <div class="input-group">
+        <div class="input-group" title="Time in milliseconds between automatic message changes. Messages will cycle through if multiple are set.">
           <span class="input-label">Msg Interval:</span>
           <input type="number" class="control-input" id="msgIntervalInput" value="2500" min="500" step="100">
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Duration of the message change animation in milliseconds. Controls the fade-out and reveal effect.">
           <span class="input-label">Msg Transition:</span>
           <input type="number" class="control-input" id="msgTransitionInput" value="500" min="100" step="50">
         </div>
-        <div class="split-btn" style="width: 100%;">
+        <div class="split-btn" style="width: 100%;" title="Set random message(s). Single mode sets one message, Multi mode sets 3 messages that auto-cycle.">
           <button class="control-btn" id="randomMsgBtn" style="flex: 1;">🎲 Single Message</button>
           <button class="control-btn dropdown-toggle" id="randomMsgDropdown">▾</button>
           <div class="dropdown-menu" id="randomMsgMenu">
@@ -553,7 +553,7 @@
       
       <div class="control-section">
         <h4>Animation</h4>
-        <div class="control-row">
+        <div class="control-row" title="Easing function for pointer movement animation. Custom options provide unique effects, CSS built-ins are standard timing functions.">
           <select class="control-btn" id="easingSelect" style="flex: 1;">
             <optgroup label="Custom">
               <option value="default" selected>Default</option>
@@ -575,19 +575,19 @@
             </optgroup>
           </select>
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Duration of the pointer movement animation in milliseconds. Higher values = slower, smoother movement.">
           <span class="input-label">Duration:</span>
           <input type="number" class="control-input" id="animDurationInput" value="1000" min="100" step="100">
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Fade-in duration when pointer first appears. Set to 0 for instant appearance.">
           <span class="input-label">Intro Fade:</span>
           <input type="number" class="control-input" id="introFadeInput" value="1000" min="0" step="100">
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Duration of message bubble fade animation when it appears/disappears.">
           <span class="input-label">Bubble Fade:</span>
           <input type="number" class="control-input" id="bubbleFadeInput" value="500" min="0" step="50">
         </div>
-        <button class="toggle-btn active" id="floatingToggle">
+        <button class="toggle-btn active" id="floatingToggle" title="Enable subtle up/down bobbing animation when pointer is stationary. Adds a more lively feel.">
           <span>Floating Animation</span>
           <div class="toggle-indicator"></div>
         </button>
@@ -596,7 +596,7 @@
       <!-- Right Column -->
       <div class="control-section">
         <h4>Position</h4>
-        <div class="input-group">
+        <div class="input-group" title="Where the pointer appears initially before first pointTo call. 'First Step' places it at step 1 target immediately.">
           <span class="input-label">Initial Pos:</span>
           <select class="control-select" id="initialPositionSelect">
             <option value="center">Center</option>
@@ -611,23 +611,23 @@
             <option value="bottom-right">Bottom Right</option>
           </select>
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Offset in pixels from screen edge for corner/edge initial positions (top-left, bottom-right, etc.)">
           <span class="input-label">Edge Offset:</span>
           <input type="number" class="control-input" id="initialPosOffsetInput" value="32" step="8">
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Horizontal offset between pointer tip and target element. Adjust to fine-tune pointer position.">
           <span class="input-label">Offset X:</span>
           <input type="number" class="control-input" id="offsetXInput" value="20" step="5">
         </div>
-        <div class="input-group">
+        <div class="input-group" title="Vertical offset between pointer tip and target element. Adjust to fine-tune pointer position.">
           <span class="input-label">Offset Y:</span>
           <input type="number" class="control-input" id="offsetYInput" value="16" step="5">
         </div>
-        <button class="toggle-btn active" id="trackingToggle">
+        <button class="toggle-btn active" id="trackingToggle" title="Continuously track target element position. When enabled, pointer follows if target moves (e.g., scroll, animation).">
           <span>Tracking</span>
           <div class="toggle-indicator"></div>
         </button>
-        <div class="input-group">
+        <div class="input-group" title="How often to check target position per second. Higher = smoother tracking but more CPU. 0 = disabled.">
           <span class="input-label">Tracking FPS:</span>
           <input type="number" class="control-input" id="trackingFpsInput" value="60" min="0" max="144" step="10">
         </div>
@@ -635,11 +635,11 @@
       
       <div class="control-section">
         <h4>Behavior</h4>
-        <button class="toggle-btn active" id="resetOnCompleteToggle">
+        <button class="toggle-btn active" id="resetOnCompleteToggle" title="Return pointer to initial position after all steps complete. If disabled, pointer stays at last target.">
           <span>Reset on Complete</span>
           <div class="toggle-indicator"></div>
         </button>
-        <button class="toggle-btn active" id="hideOnCompleteToggle">
+        <button class="toggle-btn active" id="hideOnCompleteToggle" title="Automatically hide pointer after tour completes (and reset animation if enabled). Useful for one-time tours.">
           <span>Hide on Complete</span>
           <div class="toggle-indicator"></div>
         </button>
@@ -647,15 +647,15 @@
       
       <div class="control-section">
         <h4>Autoplay</h4>
-        <div class="input-group">
+        <div class="input-group" title="Delay between automatic step advances in milliseconds. Set to 0 to disable autoplay by interval.">
           <span class="input-label">Interval:</span>
           <input type="number" class="control-input" id="autoplayInput" value="0" min="0" step="500" placeholder="0 = off">
         </div>
-        <button class="toggle-btn" id="autoplayToggle">
+        <button class="toggle-btn" id="autoplayToggle" title="Enable automatic progression through steps. Uses the interval value above for timing.">
           <span>Autoplay</span>
           <div class="toggle-indicator"></div>
         </button>
-        <button class="toggle-btn active" id="waitForMessagesToggle">
+        <button class="toggle-btn active" id="waitForMessagesToggle" title="Wait for all messages to display before auto-advancing to next step. Ensures users see all messages.">
           <span>Wait for Messages</span>
           <div class="toggle-indicator"></div>
         </button>
@@ -665,18 +665,18 @@
       <div class="control-section full-width">
         <h4>Actions</h4>
         <div class="control-row">
-          <button class="control-btn" id="pointToBtn" style="flex: 1;">📍 Point to Custom</button>
-          <button class="control-btn" id="restartBtn" style="flex: 1;">🔄 Restart</button>
+          <button class="control-btn" id="pointToBtn" style="flex: 1;" title="Point to a custom CSS selector or coordinates. Opens a prompt to enter target.">📍 Point to Custom</button>
+          <button class="control-btn" id="restartBtn" style="flex: 1;" title="Reset tour to step 1 and restart. Pointer moves back to first target.">🔄 Restart</button>
         </div>
-        <button class="control-btn" id="copyCodeBtn" style="width: 100%;">📋 Copy Config Code</button>
+        <button class="control-btn" id="copyCodeBtn" style="width: 100%;" title="Copy JavaScript code with current configuration to clipboard. Use in your own projects.">📋 Copy Config Code</button>
       </div>
       
       <div class="control-section full-width">
-        <button class="toggle-btn" id="statsToggle">
+        <button class="toggle-btn" id="statsToggle" title="Show FPS counter and performance metrics in top-left corner. Useful for debugging.">
           <span>Show Stats</span>
           <div class="toggle-indicator"></div>
         </button>
-        <button class="toggle-btn active" id="logEventsToggle">
+        <button class="toggle-btn active" id="logEventsToggle" title="Log all pointer events to browser console. Helps understand event flow and debug issues.">
           <span>Log Events</span>
           <div class="toggle-indicator"></div>
         </button>
@@ -686,9 +686,9 @@
 
   <!-- Steps Panel - Bottom Left -->
   <div class="steps-panel">
-    <button class="control-btn" id="prevBtn" disabled>← Prev</button>
-    <span class="step-indicator" id="stepIndicator">Step 1 of 6</span>
-    <button class="control-btn primary" id="nextBtn">Next →</button>
+    <button class="control-btn" id="prevBtn" disabled title="Go to previous step in the tour sequence.">← Prev</button>
+    <span class="step-indicator" id="stepIndicator" title="Current step position in the tour.">Step 1 of 6</span>
+    <button class="control-btn primary" id="nextBtn" title="Advance to next step in the tour sequence.">Next →</button>
   </div>
 
   <!-- Local: pointy.js is copied to docs folder during build -->
@@ -1305,6 +1305,10 @@
       if (messageMode === 'multi') {
         const shuffled = [...randomMessages].sort(() => Math.random() - 0.5);
         pointy.setContent(shuffled.slice(0, 3)); // Send 3 random messages
+        // Auto-start message cycling if interval is set
+        if (pointy.messageInterval && !pointy.isMessageCycleActive()) {
+          pointy.startMessageCycle();
+        }
       } else {
         // Pseudo-random easter egg with increasing chance
         if (Math.random() < easterEggChance) {

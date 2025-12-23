@@ -472,6 +472,8 @@ class Pointy {
     this.isVisible = false;
     this.isPointingUp = true;  // Always start pointing up
     this.lastTargetY = null;
+    this._targetYHistory = []; // Track Y positions for velocity detection
+    this._lastDirectionChangeTime = 0; // Debounce direction changes
     this.manualDirection = null; // 'up', 'down', or null (auto)
     this.moveTimeout = null;
     this._hasShownBefore = false; // For intro animation
@@ -578,18 +580,37 @@ class Pointy {
     if (this.manualDirection !== null) {
       this.isPointingUp = this.manualDirection === 'up';
     } else {
-      // Auto: Check if target is above or below previous position
+      // Auto: Track velocity over time to detect movement direction
       const currentTargetY = targetRect.top + scrollY;
-      if (this.lastTargetY !== null) {
-        const threshold = 50;
-        if (currentTargetY < this.lastTargetY - threshold) {
-          // Target moved UP - pointer below target, pointing up
-          this.isPointingUp = true;
-        } else if (currentTargetY > this.lastTargetY + threshold) {
-          // Target moved DOWN - pointer above target, pointing down
-          this.isPointingUp = false;
+      const now = Date.now();
+      
+      // Add to history with timestamp
+      this._targetYHistory.push({ y: currentTargetY, time: now });
+      
+      // Keep only last 200ms of history
+      const historyWindow = 200;
+      this._targetYHistory = this._targetYHistory.filter(h => now - h.time < historyWindow);
+      
+      // Calculate velocity if we have enough history
+      if (this._targetYHistory.length >= 2) {
+        const oldest = this._targetYHistory[0];
+        const newest = this._targetYHistory[this._targetYHistory.length - 1];
+        const deltaY = newest.y - oldest.y;
+        const deltaTime = newest.time - oldest.time;
+        
+        // Only change direction if significant movement and debounce (300ms between changes)
+        const velocityThreshold = 30; // pixels moved in the history window
+        const debounceTime = 300;
+        
+        if (Math.abs(deltaY) > velocityThreshold && (now - this._lastDirectionChangeTime) > debounceTime) {
+          const newDirection = deltaY < 0; // Moving up = true, moving down = false
+          if (newDirection !== this.isPointingUp) {
+            this.isPointingUp = newDirection;
+            this._lastDirectionChangeTime = now;
+          }
         }
       }
+      
       this.lastTargetY = currentTargetY;
     }
 
@@ -1917,14 +1938,17 @@ class Pointy {
   pointTo(target, content, direction) {
     const previousTarget = this.targetElement;
     
+    // Determine actual direction ('auto' means will be calculated in updatePosition)
+    const actualDirection = direction || 'auto';
+    
     this._emit('beforePointTo', { 
       target: Pointy.getTargetElement(target), 
       content: content,
-      direction: direction,
+      direction: actualDirection,
       fromTarget: previousTarget
     });
     
-    // Set manual direction
+    // Set manual direction (null means auto)
     this.manualDirection = direction || null;
     
     // Pause floating animation during movement
@@ -1940,17 +1964,6 @@ class Pointy {
       content: content
     });
     
-    this.moveTimeout = setTimeout(() => {
-      this.container.classList.remove(this.classNames.moving);
-      this._emit('pointToComplete', { target: this.targetElement, content: content });
-      this._emit('animationEnd', { 
-        fromTarget: previousTarget, 
-        toTarget: this.targetElement,
-        type: 'pointTo',
-        content: content
-      });
-    }, this.animationDuration);
-    
     this.targetElement = toTarget;
     
     if (content !== undefined) {
@@ -1962,7 +1975,21 @@ class Pointy {
     
     this.updatePosition();
     
-    this._emit('pointTo', { target: this.targetElement, content: content, direction: direction });
+    // Get the resolved direction after updatePosition calculates it
+    const resolvedDirection = this.isPointingUp ? 'up' : 'down';
+    
+    this.moveTimeout = setTimeout(() => {
+      this.container.classList.remove(this.classNames.moving);
+      this._emit('pointToComplete', { target: this.targetElement, content: content, direction: resolvedDirection });
+      this._emit('animationEnd', { 
+        fromTarget: previousTarget, 
+        toTarget: this.targetElement,
+        type: 'pointTo',
+        content: content
+      });
+    }, this.animationDuration);
+    
+    this._emit('pointTo', { target: this.targetElement, content: content, direction: resolvedDirection });
     
     // Make sure it's visible
     if (!this.isVisible) {
