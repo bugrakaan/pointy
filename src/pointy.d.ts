@@ -8,6 +8,31 @@ declare module '@diabolic/pointy' {
 }
 
 /**
+ * Direction presets for pointer positioning
+ */
+type PointyDirection = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right' | null;
+
+/**
+ * Horizontal direction
+ */
+type PointyHorizontalDirection = 'left' | 'right' | null;
+
+/**
+ * Vertical direction
+ */
+type PointyVerticalDirection = 'up' | 'down' | null;
+
+/**
+ * Viewport threshold configuration
+ */
+interface PointyViewportThresholds {
+  /** Horizontal margin from viewport edge to trigger flip (default: 40) */
+  x?: number;
+  /** Vertical margin from viewport edge to trigger flip (default: 60) */
+  y?: number;
+}
+
+/**
  * Step configuration for tour steps
  */
 interface PointyStep {
@@ -15,8 +40,8 @@ interface PointyStep {
   target: string | HTMLElement;
   /** Content to display - can be string, HTML, array of messages, or React element */
   content: string | string[] | React.ReactNode | React.ReactNode[];
-  /** Pointer direction: 'up', 'down', or null for auto */
-  direction?: 'up' | 'down' | null;
+  /** Pointer direction: 'up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right', or null for auto */
+  direction?: PointyDirection;
   /** Step-specific autoplay duration in ms (overrides global autoplay) */
   duration?: number;
 }
@@ -109,6 +134,10 @@ interface PointyOptions {
   easing?: PointyEasing;
   /** Enable floating/bobbing animation (default: true) */
   floatingAnimation?: boolean;
+
+  // Viewport
+  /** Auto-flip bubble to stay within viewport (default: true). Can be boolean or threshold config */
+  stayInViewport?: boolean | PointyViewportThresholds;
 
   // Position
   /** Horizontal offset from target in px (default: 20) */
@@ -247,8 +276,32 @@ interface PointyMessageCycleEventData extends PointyEventData {
 interface PointyPointingEventData extends PointyEventData {
   target?: HTMLElement;
   content?: string | string[];
-  direction?: 'up' | 'down' | null;
+  direction?: PointyDirection;
   fromTarget?: HTMLElement;
+}
+
+/**
+ * Flip event data (when bubble flips due to viewport bounds)
+ */
+interface PointyFlipEventData extends PointyEventData {
+  from: 'left' | 'right' | 'up' | 'down';
+  to: 'left' | 'right' | 'up' | 'down';
+}
+
+/**
+ * Direction change event data
+ */
+interface PointyDirectionChangeEventData extends PointyEventData {
+  from: { horizontal: PointyHorizontalDirection; vertical: PointyVerticalDirection };
+  to: { horizontal: PointyHorizontalDirection; vertical: PointyVerticalDirection };
+}
+
+/**
+ * Viewport change event data
+ */
+interface PointyViewportChangeEventData extends PointyEventData {
+  from: { enabled: boolean; x: number; y: number };
+  to: { enabled: boolean; x: number; y: number };
 }
 
 /**
@@ -291,15 +344,17 @@ type PointyEventCallback<T = PointyEventData> = (data: T) => void;
  */
 type PointyLifecycleEvent = 'beforeShow' | 'show' | 'beforeHide' | 'hide' | 'destroy' | 'beforeRestart' | 'restart' | 'beforeReset' | 'reset';
 type PointyNavigationEvent = 'beforeStepChange' | 'stepChange' | 'next' | 'prev' | 'complete';
-type PointyAnimationEvent = 'animationStart' | 'animationEnd' | 'move' | 'moveComplete' | 'introAnimationStart' | 'introAnimationEnd';
+type PointyAnimationEvent = 'animationStart' | 'animationEnd' | 'move' | 'moveComplete' | 'introAnimationStart' | 'introAnimationEnd' | 'flipHorizontal' | 'flipVertical';
+type PointyDirectionEvent = 'directionChange' | 'horizontalDirectionChange' | 'verticalDirectionChange';
+type PointyViewportEvent = 'stayInViewportChange';
 type PointyContentEvent = 'contentSet' | 'messagesSet' | 'messageChange';
 type PointyMessageCycleEvent = 'messageCycleStart' | 'messageCycleStop' | 'messageCyclePause' | 'messageCycleResume' | 'messageCycleComplete';
 type PointyPointingEvent = 'beforePointTo' | 'pointTo' | 'pointToComplete';
 type PointyTrackingEvent = 'track' | 'targetChange' | 'trackingChange' | 'trackingFpsChange';
 type PointyAutoplayEvent = 'autoplayStart' | 'autoplayStop' | 'autoplayPause' | 'autoplayResume' | 'autoplayNext' | 'autoplayComplete' | 'autoHide' | 'autoplayChange' | 'autoplayWaitForMessagesChange';
-type PointyConfigEvent = 'easingChange' | 'animationDurationChange' | 'introFadeDurationChange' | 'bubbleFadeDurationChange' | 'messageIntervalChange' | 'messageTransitionDurationChange' | 'offsetChange' | 'resetOnCompleteChange' | 'hideOnCompleteChange' | 'hideOnCompleteDelayChange' | 'floatingAnimationChange' | 'initialPositionChange' | 'initialPositionOffsetChange' | 'pointerSvgChange';
+type PointyConfigEvent = 'easingChange' | 'animationDurationChange' | 'introFadeDurationChange' | 'bubbleFadeDurationChange' | 'messageIntervalChange' | 'messageTransitionDurationChange' | 'offsetChange' | 'resetOnCompleteChange' | 'hideOnCompleteChange' | 'hideOnCompleteDelayChange' | 'floatingAnimationChange' | 'initialPositionChange' | 'initialPositionOffsetChange' | 'pointerSvgChange' | 'zIndexChange';
 
-type PointyEvent = PointyLifecycleEvent | PointyNavigationEvent | PointyAnimationEvent | PointyContentEvent | PointyMessageCycleEvent | PointyPointingEvent | PointyTrackingEvent | PointyAutoplayEvent | PointyConfigEvent;
+type PointyEvent = PointyLifecycleEvent | PointyNavigationEvent | PointyAnimationEvent | PointyDirectionEvent | PointyViewportEvent | PointyContentEvent | PointyMessageCycleEvent | PointyPointingEvent | PointyTrackingEvent | PointyAutoplayEvent | PointyConfigEvent;
 
 /**
  * Event group names
@@ -313,6 +368,8 @@ interface PointyEventGroups {
   lifecycle: PointyLifecycleEvent[];
   navigation: PointyNavigationEvent[];
   animation: PointyAnimationEvent[];
+  direction: PointyDirectionEvent[];
+  viewport: PointyViewportEvent[];
   content: PointyContentEvent[];
   messageCycle: PointyMessageCycleEvent[];
   pointing: PointyPointingEvent[];
@@ -475,6 +532,14 @@ declare class Pointy {
   /** Current pointer SVG or React element */
   pointerSvg: string | React.ReactNode;
 
+  // Viewport properties
+  /** Whether to auto-flip bubble to stay in viewport */
+  stayInViewport: boolean;
+  /** Horizontal viewport threshold */
+  viewportThresholdX: number;
+  /** Vertical viewport threshold */
+  viewportThresholdY: number;
+
   // State properties (readonly)
   /** Whether pointer is currently visible */
   readonly isVisible: boolean;
@@ -486,8 +551,12 @@ declare class Pointy {
   readonly currentMessages: (string | React.ReactNode)[];
   /** Whether pointer is pointing up */
   readonly isPointingUp: boolean;
-  /** Manual direction override */
-  readonly manualDirection: 'up' | 'down' | null;
+  /** Whether pointer is on left side of target */
+  readonly isPointingLeft: boolean;
+  /** Manual horizontal direction override */
+  readonly manualHorizontalDirection: PointyHorizontalDirection;
+  /** Manual vertical direction override */
+  readonly manualVerticalDirection: PointyVerticalDirection;
 
   // Callbacks
   /** Step change callback */
@@ -532,9 +601,9 @@ declare class Pointy {
    * Point to any element without changing current step
    * @param target - Target element or CSS selector
    * @param content - Optional content to display
-   * @param direction - Optional direction: 'up', 'down', or null for auto
+   * @param direction - Optional direction: 'up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right', or null for auto
    */
-  pointTo(target: string | HTMLElement, content?: string | string[], direction?: 'up' | 'down' | null): void;
+  pointTo(target: string | HTMLElement, content?: string | string[], direction?: PointyDirection): void;
 
   // Content methods
   /**
@@ -727,6 +796,32 @@ declare class Pointy {
    * @param svg - SVG markup string or React element
    */
   setPointerSvg(svg: string | React.ReactNode): void;
+  /**
+   * Set the z-index of the container
+   * @param zIndex - CSS z-index value
+   */
+  setZIndex(zIndex: number): void;
+  /**
+   * Set stayInViewport enabled/disabled with optional thresholds
+   * @param enabled - Whether stayInViewport is enabled
+   * @param thresholds - Optional threshold values { x?: number, y?: number }
+   */
+  setStayInViewport(enabled: boolean, thresholds?: PointyViewportThresholds): void;
+  /**
+   * Set the pointer direction manually (both horizontal and vertical)
+   * @param direction - Direction: 'up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right', or null for auto
+   */
+  setDirection(direction: PointyDirection): void;
+  /**
+   * Set only the horizontal direction
+   * @param direction - 'left', 'right', or null for auto
+   */
+  setHorizontalDirection(direction: PointyHorizontalDirection): void;
+  /**
+   * Set only the vertical direction
+   * @param direction - 'up', 'down', or null for auto
+   */
+  setVerticalDirection(direction: PointyVerticalDirection): void;
 
   // Getter methods
   /** Get current pointer SVG or React element */
@@ -825,6 +920,10 @@ export {
   PointyClassSuffixes,
   PointyInitialPosition,
   PointyEasing,
+  PointyDirection,
+  PointyHorizontalDirection,
+  PointyVerticalDirection,
+  PointyViewportThresholds,
   PointyEvent,
   PointyEventGroup,
   PointyEventGroups,
@@ -836,6 +935,11 @@ export {
   PointyNavigationEventData,
   PointyAnimationEvent,
   PointyAnimationEventData,
+  PointyDirectionEvent,
+  PointyDirectionChangeEventData,
+  PointyViewportEvent,
+  PointyViewportChangeEventData,
+  PointyFlipEventData,
   PointyContentEvent,
   PointyContentEventData,
   PointyMessageCycleEvent,
