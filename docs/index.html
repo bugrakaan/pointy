@@ -1393,7 +1393,7 @@
     randomMsgBtn.addEventListener('click', () => {
       if (messageMode === 'multi') {
         const shuffled = [...randomMessages].sort(() => Math.random() - 0.5);
-        pointy.setContent(shuffled.slice(0, 3)); // Send 3 random messages
+        pointy.setMessages(shuffled.slice(0, 3)); // Send 3 random messages
         // Auto-start message cycling if interval is set
         if (pointy.messageInterval && !pointy.isMessageCycleActive()) {
           pointy.startMessageCycle();
@@ -1401,11 +1401,11 @@
       } else {
         // Pseudo-random easter egg with increasing chance
         if (Math.random() < easterEggChance) {
-          pointy.setContent('Click again to summon the Flying Spaghetti Monster 🍝');
+          pointy.setMessage('Click again to summon the Flying Spaghetti Monster 🍝');
           easterEggChance = 0.01; // Reset chance after triggering
         } else {
           const randomMsg = randomMessages[Math.floor(Math.random() * randomMessages.length)];
-          pointy.setContent(randomMsg);
+          pointy.setMessage(randomMsg);
           // Increase chance for next time (capped)
           easterEggChance = Math.min(easterEggChance + EASTER_EGG_INCREMENT, EASTER_EGG_MAX);
         }

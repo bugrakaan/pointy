@@ -138,10 +138,10 @@ pointy.reset();             // Reset to initial position
 ### Content
 
 ```javascript
-pointy.setMessages('New message');              // Replace all messages
+pointy.setMessage('Single message');            // Replace all with single message
 pointy.setMessages(['Message 1', 'Message 2']); // Set multiple messages
 
-pointy.setMessage('Updated text');             // Update current message only
+pointy.setCurrentMessage('Updated text');       // Update message at current index only
 
 pointy.nextMessage();
 pointy.prevMessage();
@@ -302,7 +302,7 @@ pointy.on('all', (data) => {
 | Event | Data |
 |-------|------|
 | `messagesSet` | `{ messages, total, animated, cyclePaused }` |
-| `messageUpdate` | `{ index, message, oldMessage, total, animated }` |
+| `currentMessageUpdate` | `{ index, message, oldMessage, total, animated }` |
 | `messageChange` | `{ fromIndex, toIndex, message, total, isAuto? }` |
 
 #### Message Cycle
@@ -353,6 +353,62 @@ All setter methods emit `*Change` events with `{ from, to }` data.
   --pointy-easing: cubic-bezier(0, 0.55, 0.45, 1);
   --pointy-bubble-fade: 500ms;
 }
+```
+
+### Custom Class Names
+
+Customize class prefix or override specific class names:
+
+```javascript
+// Change prefix (default: 'pointy')
+const pointy = new Pointy({
+  classPrefix: 'my-tour',  // → .my-tour-container, .my-tour-bubble, etc.
+  steps: [...]
+});
+
+// Override specific suffixes
+const pointy = new Pointy({
+  classSuffixes: {
+    container: 'wrapper',  // → .pointy-wrapper instead of .pointy-container
+    bubble: 'tooltip'      // → .pointy-tooltip instead of .pointy-bubble
+  },
+  steps: [...]
+});
+
+// Full class name override
+const pointy = new Pointy({
+  classNames: {
+    container: 'custom-container',
+    pointer: 'custom-pointer',
+    bubble: 'custom-bubble',
+    bubbleText: 'custom-text',
+    hidden: 'is-hidden',
+    visible: 'is-visible',
+    moving: 'is-moving'
+  },
+  steps: [...]
+});
+```
+
+**Default Class Names:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `container` | `pointy-container` | Main wrapper element |
+| `pointer` | `pointy-pointer` | Pointer/cursor element |
+| `bubble` | `pointy-bubble` | Message bubble |
+| `bubbleText` | `pointy-bubble-text` | Text inside bubble |
+| `hidden` | `pointy-hidden` | Hidden state |
+| `visible` | `pointy-visible` | Visible state |
+| `moving` | `pointy-moving` | During animation |
+
+### CSS Variable Prefix
+
+```javascript
+const pointy = new Pointy({
+  cssVarPrefix: 'tour',  // → --tour-duration, --tour-easing, etc.
+  steps: [...]
+});
 ```
 
 ### Custom Pointer SVG

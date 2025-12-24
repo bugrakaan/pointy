@@ -75,8 +75,8 @@
  * - introAnimationEnd: Initial fade-in animation completed
  * 
  * Content:
- * - messagesSet: Messages array replaced via setMessages()
- * - messageUpdate: Single message updated via setMessage()
+ * - messagesSet: Messages array replaced via setMessages() or setMessage()
+ * - currentMessageUpdate: Current message updated via setCurrentMessage()
  * - messageChange: Message changed (navigation or auto-cycle)
  * 
  * Message Cycle:
@@ -128,7 +128,7 @@
  * Core: show(), hide(), destroy()
  * Navigation: next(), prev(), goToStep(index), reset(), restart()
  * Custom Target: pointTo(target, content?, direction?)
- * Content: setMessages(content), setMessage(msg), nextMessage(), prevMessage(), goToMessage(index)
+ * Content: setMessages(content), setMessage(msg), setCurrentMessage(msg), nextMessage(), prevMessage(), goToMessage(index)
  * Message Cycle: startMessageCycle(interval?), stopMessageCycle(), pauseMessageCycle(), resumeMessageCycle()
  * Autoplay: startAutoplay(), stopAutoplay(), pauseAutoplay(), resumeAutoplay()
  * Animation: animateToInitialPosition()
@@ -1308,11 +1308,11 @@ class Pointy {
   }
 
   /**
-   * Set/update the current message (at current index)
+   * Update the message at current index only (does not replace all messages)
    * @param {string} message - New message content
    * @param {boolean} animate - Whether to animate the change (default: true)
    */
-  setMessage(message, animate = true) {
+  setCurrentMessage(message, animate = true) {
     const oldMessage = this.currentMessages[this.currentMessageIndex];
     this.currentMessages[this.currentMessageIndex] = message;
     
@@ -1323,13 +1323,22 @@ class Pointy {
       this.updatePosition();
     }
     
-    this._emit('messageUpdate', {
+    this._emit('currentMessageUpdate', {
       index: this.currentMessageIndex,
       message: message,
       oldMessage: oldMessage,
       total: this.currentMessages.length,
       animated: animate
     });
+  }
+
+  /**
+   * Set a single message (replaces all messages with one)
+   * @param {string} message - Message content
+   * @param {boolean} animate - Whether to animate the change (default: true)
+   */
+  setMessage(message, animate = true) {
+    this.setMessages(message, animate);
   }
 
   /**
