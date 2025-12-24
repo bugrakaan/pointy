@@ -20,6 +20,7 @@
  * - steps {Array<{target, content, direction?, duration?}>} - Tour steps
  * - target {string|HTMLElement} - Initial target element
  * - content {string|string[]} - Initial content/messages (single-step use)
+ * - zIndex {number} - CSS z-index for the container (default: 9999)
  * - offsetX {number} - Horizontal offset from target (default: 20)
  * - offsetY {number} - Vertical offset from target (default: 16)
  * - trackingFps {number} - Position update FPS, 0 = unlimited (default: 60)
@@ -136,8 +137,8 @@
  * 
  * Setters (all emit change events):
  * setEasing(), setAnimationDuration(), setIntroFadeDuration(), setBubbleFadeDuration(),
- * setMessageInterval(), setMessageTransitionDuration(), setOffset(), setResetOnComplete(),
- * setFloatingAnimation(), setInitialPosition(), setInitialPositionOffset(),
+ * setMessageInterval(), setMessageTransitionDuration(), setOffset(), setZIndex(),
+ * setResetOnComplete(), setFloatingAnimation(), setInitialPosition(), setInitialPositionOffset(),
  * setAutoplay(), setAutoplayWaitForMessages()
  * 
  * Static Helpers:
@@ -243,7 +244,6 @@ class Pointy {
 
     .${cn.container} {
       position: absolute;
-      z-index: 9999;
       font-family: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --${vp}-duration: 1000ms;
       --${vp}-easing: cubic-bezier(0, 0.55, 0.45, 1);
@@ -435,6 +435,7 @@ class Pointy {
     Pointy.injectStyles(this.classNames, this.cssVarPrefix);
 
     this.steps = options.steps || [];
+    this.zIndex = options.zIndex !== undefined ? options.zIndex : 9999; // CSS z-index
     this.offsetX = options.offsetX !== undefined ? options.offsetX : 20;
     this.offsetY = options.offsetY !== undefined ? options.offsetY : 16;
     this.tracking = options.tracking !== undefined ? options.tracking : true; // Enable/disable position tracking
@@ -487,6 +488,7 @@ class Pointy {
     // Create DOM elements - pointer is the anchor, bubble positioned relative to it
     this.container = document.createElement('div');
     this.container.className = `${this.classNames.container} ${this.classNames.hidden}`;
+    this.container.style.zIndex = this.zIndex;
     this.container.style.setProperty(`--${this.cssVarPrefix}-duration`, `${this.animationDuration}ms`);
     this.container.style.setProperty(`--${this.cssVarPrefix}-easing`, this._resolveEasing(this.easing));
     this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-fade`, `${this.bubbleFadeDuration}ms`);
@@ -1390,6 +1392,19 @@ class Pointy {
     this.targetElement = Pointy.getTargetElement(newTarget);
     this.updatePosition();
     this._emit('targetChange', { from: oldTarget, to: this.targetElement });
+  }
+
+  /**
+   * Set the z-index of the container
+   * @param {number} zIndex - CSS z-index value
+   */
+  setZIndex(zIndex) {
+    const oldValue = this.zIndex;
+    if (oldValue === zIndex) return;
+    
+    this.zIndex = zIndex;
+    this.container.style.zIndex = zIndex;
+    this._emit('zIndexChange', { from: oldValue, to: zIndex });
   }
 
   setOffset(offsetX, offsetY) {

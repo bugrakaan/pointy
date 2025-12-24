@@ -87,6 +87,7 @@ pointy.show();
 | `offsetY` | `number` | `16` | Vertical offset from target |
 | `initialPosition` | `string` | `'center'` | Starting position preset |
 | `tracking` | `boolean` | `true` | Enable real-time target tracking |
+| `zIndex` | `number` | `9999` | CSS z-index for the container |
 
 **Initial Position Presets:** `'center'`, `'top-left'`, `'top-center'`, `'top-right'`, `'middle-left'`, `'middle-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'`, `'first-step'`
 
@@ -190,6 +191,7 @@ pointy.setFloatingAnimation(true);
 pointy.setOffset(30, 20);
 pointy.setInitialPosition('top-left');
 pointy.setInitialPositionOffset(50);
+pointy.setZIndex(10000);
 
 // Tracking
 pointy.setTracking(true);
