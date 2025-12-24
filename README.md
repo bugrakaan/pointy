@@ -64,9 +64,39 @@ pointy.show();
 {
   target: '#element',           // CSS selector or HTMLElement
   content: 'Message',           // String, HTML, array, or React element
-  direction: 'up',              // 'up', 'down', or null (auto)
+  direction: 'up-left',         // Direction preset or null (auto)
   duration: 3000                // Step-specific autoplay duration (ms)
 }
+```
+
+### Direction Presets
+
+Control the pointer and bubble direction manually:
+
+| Direction | Description |
+|-----------|-------------|
+| `null` | Auto (default) - automatically adjusts based on viewport |
+| `'up'` | Pointer points up, bubble below target |
+| `'down'` | Pointer points down, bubble above target |
+| `'left'` | Bubble on left side of target |
+| `'right'` | Bubble on right side of target |
+| `'up-left'` | Pointer up, bubble on left |
+| `'up-right'` | Pointer up, bubble on right |
+| `'down-left'` | Pointer down, bubble on left |
+| `'down-right'` | Pointer down, bubble on right |
+
+```javascript
+// In steps
+{ target: '#el', content: 'Hello', direction: 'down-right' }
+
+// Runtime
+pointy.setDirection('up-left');           // Both axes
+pointy.setHorizontalDirection('right');   // Only horizontal
+pointy.setVerticalDirection('down');      // Only vertical
+pointy.setDirection(null);                // Reset to auto
+
+// pointTo with direction
+pointy.pointTo('#element', 'Message', 'down-left');
 ```
 
 ### Animation
@@ -192,6 +222,12 @@ pointy.setOffset(30, 20);
 pointy.setInitialPosition('top-left');
 pointy.setInitialPositionOffset(50);
 pointy.setZIndex(10000);
+pointy.setStayInViewport(true, { x: 50, y: 80 }); // Auto-flip with custom thresholds
+
+// Direction
+pointy.setDirection('up-left');           // Set both directions
+pointy.setHorizontalDirection('right');   // Only horizontal (left/right/null)
+pointy.setVerticalDirection('down');      // Only vertical (up/down/null)
 
 // Tracking
 pointy.setTracking(true);
@@ -297,6 +333,15 @@ pointy.on('all', (data) => {
 | `moveComplete` | `{ index, step, target }` |
 | `introAnimationStart` | `{ duration, initialPosition }` |
 | `introAnimationEnd` | `{ initialPosition }` |
+| `flipHorizontal` | `{ from: 'left'\|'right', to: 'left'\|'right' }` |
+| `flipVertical` | `{ from: 'up'\|'down', to: 'up'\|'down' }` |
+
+#### Direction
+| Event | Data |
+|-------|------|
+| `directionChange` | `{ from: { horizontal, vertical }, to: { horizontal, vertical } }` |
+| `horizontalDirectionChange` | `{ from, to }` |
+| `verticalDirectionChange` | `{ from, to }` |
 
 #### Content
 | Event | Data |
@@ -339,6 +384,13 @@ pointy.on('all', (data) => {
 | `autoplayNext` | `{ fromIndex, duration?, afterMessages? }` |
 | `autoplayComplete` | `{ totalSteps }` |
 | `autoHide` | `{ delay, source }` |
+| `autoplayChange` | `{ from, to }` |
+| `autoplayWaitForMessagesChange` | `{ from, to }` |
+
+#### Viewport
+| Event | Data |
+|-------|------|
+| `stayInViewportChange` | `{ from: { enabled, x, y }, to: { enabled, x, y } }` |
 
 #### Config
 All setter methods emit `*Change` events with `{ from, to }` data.

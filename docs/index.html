@@ -666,15 +666,19 @@
       </div>
       
       <div class="control-section">
-        <h4>Behavior</h4>
-        <button class="toggle-btn active" id="resetOnCompleteToggle" title="Return pointer to initial position after all steps complete. If disabled, pointer stays at last target.">
-          <span>Reset on Complete</span>
+        <h4>Viewport</h4>
+        <button class="toggle-btn active" id="stayInViewportToggle" title="Automatically flip bubble direction when it would go outside viewport bounds.">
+          <span>Stay in Viewport</span>
           <div class="toggle-indicator"></div>
         </button>
-        <button class="toggle-btn active" id="hideOnCompleteToggle" title="Automatically hide pointer after tour completes (and reset animation if enabled). Useful for one-time tours.">
-          <span>Hide on Complete</span>
-          <div class="toggle-indicator"></div>
-        </button>
+        <div class="input-group" title="Horizontal margin from viewport edge to trigger flip. Higher = earlier flip.">
+          <span class="input-label">Threshold X:</span>
+          <input type="number" class="control-input" id="thresholdXInput" value="40" min="0" step="10">
+        </div>
+        <div class="input-group" title="Vertical margin from viewport edge to trigger flip. Higher = earlier flip.">
+          <span class="input-label">Threshold Y:</span>
+          <input type="number" class="control-input" id="thresholdYInput" value="60" min="0" step="10">
+        </div>
       </div>
       
       <div class="control-section">
@@ -701,6 +705,17 @@
           <button class="control-btn" id="restartBtn" style="flex: 1;" title="Reset tour to step 1 and restart. Pointer moves back to first target.">🔄 Restart</button>
         </div>
         <button class="control-btn" id="copyCodeBtn" style="width: 100%;" title="Copy JavaScript code with current configuration to clipboard. Use in your own projects.">📋 Copy Config Code</button>
+      </div>
+      
+      <div class="control-section full-width">
+        <button class="toggle-btn active" id="resetOnCompleteToggle" title="Return pointer to initial position after all steps complete. If disabled, pointer stays at last target.">
+          <span>Reset on Complete</span>
+          <div class="toggle-indicator"></div>
+        </button>
+        <button class="toggle-btn active" id="hideOnCompleteToggle" title="Automatically hide pointer after tour completes (and reset animation if enabled). Useful for one-time tours.">
+          <span>Hide on Complete</span>
+          <div class="toggle-indicator"></div>
+        </button>
       </div>
       
       <div class="control-section full-width">
@@ -1094,6 +1109,9 @@
       trackingFpsInput.value = pointy.trackingFps;
       resetOnCompleteToggle.classList.toggle('active', pointy.resetOnComplete);
       hideOnCompleteToggle.classList.toggle('active', pointy.hideOnComplete);
+      stayInViewportToggle.classList.toggle('active', pointy.stayInViewport);
+      thresholdXInput.value = pointy.viewportThresholdX;
+      thresholdYInput.value = pointy.viewportThresholdY;
       autoplayInput.value = pointy.autoplay || 0;
       autoplayToggle.classList.toggle('active', pointy.autoplayEnabled && pointy.isAutoplayActive());
       waitForMessagesToggle.classList.toggle('active', pointy.autoplayWaitForMessages);
@@ -1271,6 +1289,34 @@
       saveConfigToUrl();
     });
 
+    // Stay in Viewport toggle
+    const stayInViewportToggle = document.getElementById('stayInViewportToggle');
+    const thresholdXInput = document.getElementById('thresholdXInput');
+    const thresholdYInput = document.getElementById('thresholdYInput');
+    
+    stayInViewportToggle.addEventListener('click', () => {
+      const newValue = !stayInViewportToggle.classList.contains('active');
+      const thresholds = {
+        x: parseInt(thresholdXInput.value, 10) || 40,
+        y: parseInt(thresholdYInput.value, 10) || 60
+      };
+      pointy.setStayInViewport(newValue, thresholds);
+      stayInViewportToggle.classList.toggle('active', newValue);
+      saveConfigToUrl();
+    });
+    
+    thresholdXInput.addEventListener('input', () => {
+      const value = parseInt(thresholdXInput.value, 10) || 0;
+      pointy.setStayInViewport(pointy.stayInViewport, { x: value });
+      saveConfigToUrl();
+    });
+    
+    thresholdYInput.addEventListener('input', () => {
+      const value = parseInt(thresholdYInput.value, 10) || 0;
+      pointy.setStayInViewport(pointy.stayInViewport, { y: value });
+      saveConfigToUrl();
+    });
+
     // Autoplay interval input
     const autoplayInput = document.getElementById('autoplayInput');
     autoplayInput.addEventListener('input', () => {
@@ -1416,8 +1462,8 @@
     // Configuration Persistence & Sharing
     // ============================================
     
-    // Get current config as object
-    function getCurrentConfig() {
+    // Get current config as object (before show)
+    function getCurrentConfigBeforeShow() {
       return {
         easing: pointy.easing,
         animationDuration: pointy.animationDuration,
@@ -1434,6 +1480,9 @@
         trackingFps: pointy.trackingFps,
         resetOnComplete: pointy.resetOnComplete,
         hideOnComplete: pointy.hideOnComplete,
+        stayInViewport: pointy.stayInViewport,
+        viewportThresholdX: pointy.viewportThresholdX,
+        viewportThresholdY: pointy.viewportThresholdY,
         autoplayInterval: pointy.autoplay || 0,
         autoplayEnabled: pointy.autoplayEnabled,
         autoplayWaitForMessages: pointy.autoplayWaitForMessages
@@ -1457,6 +1506,9 @@
       if (config.trackingFps !== undefined) pointy.trackingFps = Number(config.trackingFps);
       if (config.resetOnComplete !== undefined) pointy.resetOnComplete = config.resetOnComplete === 'true' || config.resetOnComplete === true;
       if (config.hideOnComplete !== undefined) pointy.hideOnComplete = config.hideOnComplete === 'true' || config.hideOnComplete === true;
+      if (config.stayInViewport !== undefined) pointy.stayInViewport = config.stayInViewport === 'true' || config.stayInViewport === true;
+      if (config.viewportThresholdX !== undefined) pointy.viewportThresholdX = Number(config.viewportThresholdX);
+      if (config.viewportThresholdY !== undefined) pointy.viewportThresholdY = Number(config.viewportThresholdY);
       if (config.autoplayInterval !== undefined) pointy.autoplay = Number(config.autoplayInterval) || null;
       if (config.autoplay !== undefined && config.autoplayInterval === undefined) pointy.autoplay = Number(config.autoplay) || null;
       if (config.autoplayEnabled === true || config.autoplayEnabled === 'true') pointy.autoplayEnabled = true;
@@ -1542,6 +1594,9 @@
         trackingFps: pointy.trackingFps,
         resetOnComplete: pointy.resetOnComplete,
         hideOnComplete: pointy.hideOnComplete,
+        stayInViewport: pointy.stayInViewport,
+        viewportThresholdX: pointy.viewportThresholdX,
+        viewportThresholdY: pointy.viewportThresholdY,
         autoplayInterval: pointy.autoplay || 0,
         autoplayEnabled: pointy.autoplayEnabled,
         autoplayWaitForMessages: pointy.autoplayWaitForMessages
@@ -1564,6 +1619,13 @@
       if (config.trackingFps !== undefined) pointy.setTrackingFps(Number(config.trackingFps));
       if (config.resetOnComplete !== undefined) pointy.setResetOnComplete(config.resetOnComplete === 'true' || config.resetOnComplete === true);
       if (config.hideOnComplete !== undefined) pointy.setHideOnComplete(config.hideOnComplete === 'true' || config.hideOnComplete === true);
+      if (config.stayInViewport !== undefined || config.viewportThresholdX !== undefined || config.viewportThresholdY !== undefined) {
+        const enabled = config.stayInViewport !== undefined ? (config.stayInViewport === 'true' || config.stayInViewport === true) : pointy.stayInViewport;
+        const thresholds = {};
+        if (config.viewportThresholdX !== undefined) thresholds.x = Number(config.viewportThresholdX);
+        if (config.viewportThresholdY !== undefined) thresholds.y = Number(config.viewportThresholdY);
+        pointy.setStayInViewport(enabled, Object.keys(thresholds).length > 0 ? thresholds : undefined);
+      }
       // Set autoplay interval without starting (setAutoplayInterval)
       if (config.autoplayInterval !== undefined) {
         pointy.autoplay = Number(config.autoplayInterval) || null;

@@ -21,6 +21,11 @@
  * - target {string|HTMLElement} - Initial target element
  * - content {string|string[]} - Initial content/messages (single-step use)
  * - zIndex {number} - CSS z-index for the container (default: 9999)
+ * - stayInViewport {boolean|object} - Auto-flip bubble to stay within viewport (default: true)
+ *   - true/false: Enable/disable with default thresholds (x: 40, y: 60)
+ *   - { x: number, y: number }: Enable with custom thresholds
+ *   - { x: number }: Enable with custom horizontal threshold only
+ *   - { y: number }: Enable with custom vertical threshold only
  * - offsetX {number} - Horizontal offset from target (default: 20)
  * - offsetY {number} - Vertical offset from target (default: 16)
  * - trackingFps {number} - Position update FPS, 0 = unlimited (default: 60)
@@ -73,6 +78,11 @@
  * - moveComplete: Position update finished
  * - introAnimationStart: Initial fade-in animation started
  * - introAnimationEnd: Initial fade-in animation completed
+ * - flipHorizontal: Bubble flipped horizontally (left/right) due to viewport bounds
+ * - flipVertical: Bubble flipped vertically (up/down) due to viewport bounds
+ * - directionChange: Manual direction changed via setDirection()
+ * - horizontalDirectionChange: Horizontal direction changed via setHorizontalDirection()
+ * - verticalDirectionChange: Vertical direction changed via setVerticalDirection()
  * 
  * Content:
  * - messagesSet: Messages array replaced via setMessages() or setMessage()
@@ -138,8 +148,10 @@
  * Setters (all emit change events):
  * setEasing(), setAnimationDuration(), setIntroFadeDuration(), setBubbleFadeDuration(),
  * setMessageInterval(), setMessageTransitionDuration(), setOffset(), setZIndex(),
- * setResetOnComplete(), setFloatingAnimation(), setInitialPosition(), setInitialPositionOffset(),
- * setAutoplay(), setAutoplayWaitForMessages()
+ * setStayInViewport(enabled, thresholds?), setDirection(direction),
+ * setHorizontalDirection(direction), setVerticalDirection(direction),
+ * setResetOnComplete(), setFloatingAnimation(),
+ * setInitialPosition(), setInitialPositionOffset(), setAutoplay(), setAutoplayWaitForMessages()
  * 
  * Static Helpers:
  * - Pointy.renderContent(element, content) - Render string/JSX to element
@@ -274,6 +286,7 @@ class Pointy {
     .${cn.bubble} {
       position: absolute;
       right: 26px;
+      left: auto;
       top: 0;
       background: #0a1551;
       color: white;
@@ -285,7 +298,7 @@ class Pointy {
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
       white-space: nowrap;
       overflow: hidden;
-      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform var(--${vp}-duration) var(--${vp}-easing), opacity var(--${vp}-bubble-fade) ease;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform var(--${vp}-duration) var(--${vp}-easing), opacity var(--${vp}-bubble-fade) ease, left var(--${vp}-duration) var(--${vp}-easing), right var(--${vp}-duration) var(--${vp}-easing);
     }
 
     .${cn.bubbleText} {
@@ -436,6 +449,18 @@ class Pointy {
 
     this.steps = options.steps || [];
     this.zIndex = options.zIndex !== undefined ? options.zIndex : 9999; // CSS z-index
+    
+    // stayInViewport: boolean or { x?: number, y?: number }
+    this.viewportThresholdX = 40; // Default horizontal margin
+    this.viewportThresholdY = 60; // Default vertical margin
+    if (typeof options.stayInViewport === 'object' && options.stayInViewport !== null) {
+      this.stayInViewport = true;
+      if (options.stayInViewport.x !== undefined) this.viewportThresholdX = options.stayInViewport.x;
+      if (options.stayInViewport.y !== undefined) this.viewportThresholdY = options.stayInViewport.y;
+    } else {
+      this.stayInViewport = options.stayInViewport !== undefined ? options.stayInViewport : true;
+    }
+    
     this.offsetX = options.offsetX !== undefined ? options.offsetX : 20;
     this.offsetY = options.offsetY !== undefined ? options.offsetY : 16;
     this.tracking = options.tracking !== undefined ? options.tracking : true; // Enable/disable position tracking
@@ -473,10 +498,12 @@ class Pointy {
     this._messageIntervalId = null;
     this.isVisible = false;
     this.isPointingUp = true;  // Always start pointing up
+    this.isPointingLeft = true; // Pointer on left side of target (bubble on right)
     this.lastTargetY = null;
     this._targetYHistory = []; // Track Y positions for velocity detection
     this._lastDirectionChangeTime = 0; // Debounce direction changes
-    this.manualDirection = null; // 'up', 'down', or null (auto)
+    this.manualHorizontalDirection = null; // 'left', 'right', or null (auto)
+    this.manualVerticalDirection = null; // 'up', 'down', or null (auto)
     this.moveTimeout = null;
     this._hasShownBefore = false; // For intro animation
 
@@ -580,10 +607,19 @@ class Pointy {
     const targetRect = this.targetElement.getBoundingClientRect();
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const bubbleWidth = this.bubble.offsetWidth || 100;
+    const bubbleHeight = this.bubble.offsetHeight || 28;
 
-    // Manual direction takes priority
-    if (this.manualDirection !== null) {
-      this.isPointingUp = this.manualDirection === 'up';
+    // Manual horizontal direction takes priority
+    if (this.manualHorizontalDirection !== null) {
+      this.isPointingLeft = this.manualHorizontalDirection === 'left';
+    }
+
+    // Manual vertical direction takes priority
+    if (this.manualVerticalDirection !== null) {
+      this.isPointingUp = this.manualVerticalDirection === 'up';
     } else {
       // Auto: Track velocity over time to detect movement direction
       const currentTargetY = targetRect.top + scrollY;
@@ -619,30 +655,107 @@ class Pointy {
       this.lastTargetY = currentTargetY;
     }
 
+    // Stay in viewport: check if bubble would go off-screen and flip accordingly
+    // Only auto-flip directions that are not manually set
+    if (this.stayInViewport) {
+      const prevIsPointingLeft = this.isPointingLeft;
+      const prevIsPointingUp = this.isPointingUp;
+      
+      // Horizontal flip check (only if not manually set)
+      if (this.manualHorizontalDirection === null) {
+        const bubbleLeftIfPointingLeft = targetRect.left - bubbleWidth - this.viewportThresholdX;
+        const bubbleRightIfPointingRight = targetRect.right + bubbleWidth + this.viewportThresholdX;
+        
+        // Flip to right side if bubble goes off left edge
+        if (bubbleLeftIfPointingLeft < 0 && this.isPointingLeft) {
+          this.isPointingLeft = false;
+        }
+        // Flip to left side if bubble goes off right edge
+        else if (bubbleRightIfPointingRight > viewportWidth && !this.isPointingLeft) {
+          this.isPointingLeft = true;
+        }
+        // Return to default (left) if there's room
+        else if (bubbleLeftIfPointingLeft >= 0 && !this.isPointingLeft) {
+          this.isPointingLeft = true;
+        }
+      }
+
+      // Vertical flip check (only if not manually set)
+      if (this.manualVerticalDirection === null) {
+        const bubbleBottomIfPointingUp = targetRect.bottom + bubbleHeight + this.viewportThresholdY;
+        const bubbleTopIfPointingDown = targetRect.top - bubbleHeight - this.viewportThresholdY;
+        
+        // Flip to pointing down if bubble goes off bottom edge
+        if (bubbleBottomIfPointingUp > viewportHeight && this.isPointingUp) {
+          this.isPointingUp = false;
+        }
+        // Flip to pointing up if bubble goes off top edge
+        else if (bubbleTopIfPointingDown < 0 && !this.isPointingUp) {
+          this.isPointingUp = true;
+        }
+      }
+      
+      // Emit flip events if direction changed
+      if (prevIsPointingLeft !== this.isPointingLeft) {
+        this._emit('flipHorizontal', { 
+          from: prevIsPointingLeft ? 'left' : 'right', 
+          to: this.isPointingLeft ? 'left' : 'right' 
+        });
+      }
+      if (prevIsPointingUp !== this.isPointingUp) {
+        this._emit('flipVertical', { 
+          from: prevIsPointingUp ? 'up' : 'down', 
+          to: this.isPointingUp ? 'up' : 'down' 
+        });
+      }
+    }
+
     // Pointer tip position varies based on rotation
     // Default SVG (0deg): tip at approximately (25, 8) - points top-right
     // Rotated 90deg: tip at approximately (25, 25) - points bottom-right
+    // Rotated -90deg (270deg): points top-left (flipped horizontally via rotation)
     let left, top;
+    let pointerRotation;
+    let bubbleTransform;
 
-    if (this.isPointingUp) {
-      // Pointer points up (default): pointer's top-right → target's bottom-left
-      this.pointer.style.transform = 'rotate(0deg)';
-      left = targetRect.left + scrollX - 25 + this.offsetX;
-      top = targetRect.bottom + scrollY - 8 - this.offsetY;
-      
-      // Bubble: below pointer
-      this.bubble.style.transform = 'translateY(28px)';
+    if (this.isPointingLeft) {
+      // Pointer on LEFT side of target, bubble extends to the LEFT
+      if (this.isPointingUp) {
+        pointerRotation = 'rotate(0deg)';
+        left = targetRect.left + scrollX - 25 + this.offsetX;
+        top = targetRect.bottom + scrollY - 8 - this.offsetY;
+        bubbleTransform = 'translateY(28px)';
+      } else {
+        pointerRotation = 'rotate(90deg)';
+        left = targetRect.left + scrollX - 25 + this.offsetX;
+        top = targetRect.top + scrollY - 25 + this.offsetY;
+        bubbleTransform = `translateY(-${bubbleHeight}px)`;
+      }
+      // Bubble position: right of pointer (default CSS)
+      this.bubble.style.right = '26px';
+      this.bubble.style.left = 'auto';
     } else {
-      // Pointer points down (90deg): pointer's bottom-right → target's top-left
-      this.pointer.style.transform = 'rotate(90deg)';
-      left = targetRect.left + scrollX - 25 + this.offsetX;
-      top = targetRect.top + scrollY - 25 + this.offsetY;
-      
-      // Bubble: above pointer
-      const bubbleHeight = this.bubble.offsetHeight || 28;
-      this.bubble.style.transform = `translateY(-${bubbleHeight}px)`;
+      // Pointer on RIGHT side of target, bubble extends to the RIGHT
+      if (this.isPointingUp) {
+        // Rotate -90deg to point top-left instead of top-right
+        pointerRotation = 'rotate(-90deg)';
+        left = targetRect.right + scrollX - 8 - this.offsetX;
+        top = targetRect.bottom + scrollY - 25 - this.offsetY;
+        bubbleTransform = 'translateY(28px)';
+      } else {
+        // Rotate 180deg to point bottom-left
+        pointerRotation = 'rotate(180deg)';
+        left = targetRect.right + scrollX - 8 - this.offsetX;
+        top = targetRect.top + scrollY - 8 + this.offsetY;
+        bubbleTransform = `translateY(-${bubbleHeight}px)`;
+      }
+      // Bubble position: left of pointer (flipped)
+      this.bubble.style.left = '26px';
+      this.bubble.style.right = 'auto';
     }
 
+    this.pointer.style.transform = pointerRotation;
+    this.bubble.style.transform = bubbleTransform;
     this.container.style.left = `${left}px`;
     this.container.style.top = `${top}px`;
   }
@@ -1416,6 +1529,113 @@ class Pointy {
     this._emit('zIndexChange', { from: oldValue, to: zIndex });
   }
 
+  /**
+   * Set stayInViewport enabled/disabled with optional thresholds
+   * @param {boolean} enabled - Whether stayInViewport is enabled
+   * @param {object} [thresholds] - Optional threshold values { x?: number, y?: number }
+   */
+  setStayInViewport(enabled, thresholds) {
+    const oldEnabled = this.stayInViewport;
+    const oldX = this.viewportThresholdX;
+    const oldY = this.viewportThresholdY;
+    
+    this.stayInViewport = enabled;
+    
+    // Update thresholds if provided
+    if (thresholds && typeof thresholds === 'object') {
+      if (thresholds.x !== undefined) this.viewportThresholdX = thresholds.x;
+      if (thresholds.y !== undefined) this.viewportThresholdY = thresholds.y;
+    }
+    
+    // Reset to default positions if disabling
+    if (!enabled) {
+      this.isPointingLeft = true;
+      this.isPointingUp = true;
+    }
+    
+    this.updatePosition();
+    this._emit('stayInViewportChange', { 
+      from: { enabled: oldEnabled, x: oldX, y: oldY }, 
+      to: { enabled, x: this.viewportThresholdX, y: this.viewportThresholdY } 
+    });
+  }
+
+  /**
+   * Parse direction string into horizontal and vertical components
+   * @private
+   * @param {string|null} direction - Direction string like 'up', 'left', 'up-left', 'down-right', etc.
+   */
+  _parseDirection(direction) {
+    if (!direction) {
+      this.manualHorizontalDirection = null;
+      this.manualVerticalDirection = null;
+      return;
+    }
+    
+    const dir = direction.toLowerCase();
+    
+    // Parse horizontal component
+    if (dir.includes('left')) {
+      this.manualHorizontalDirection = 'left';
+    } else if (dir.includes('right')) {
+      this.manualHorizontalDirection = 'right';
+    } else {
+      this.manualHorizontalDirection = null;
+    }
+    
+    // Parse vertical component
+    if (dir.includes('up')) {
+      this.manualVerticalDirection = 'up';
+    } else if (dir.includes('down')) {
+      this.manualVerticalDirection = 'down';
+    } else {
+      this.manualVerticalDirection = null;
+    }
+  }
+
+  /**
+   * Set the pointer direction manually
+   * @param {string|null} direction - Direction: 'up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right', or null for auto
+   */
+  setDirection(direction) {
+    const oldH = this.manualHorizontalDirection;
+    const oldV = this.manualVerticalDirection;
+    
+    this._parseDirection(direction);
+    
+    this.updatePosition();
+    this._emit('directionChange', { 
+      from: { horizontal: oldH, vertical: oldV }, 
+      to: { horizontal: this.manualHorizontalDirection, vertical: this.manualVerticalDirection } 
+    });
+  }
+
+  /**
+   * Set only the horizontal direction
+   * @param {string|null} direction - 'left', 'right', or null for auto
+   */
+  setHorizontalDirection(direction) {
+    const oldValue = this.manualHorizontalDirection;
+    if (oldValue === direction) return;
+    
+    this.manualHorizontalDirection = direction;
+    this.updatePosition();
+    this._emit('horizontalDirectionChange', { from: oldValue, to: direction });
+  }
+
+  /**
+   * Set only the vertical direction
+   * @param {string|null} direction - 'up', 'down', or null for auto
+   */
+  setVerticalDirection(direction) {
+    const oldValue = this.manualVerticalDirection;
+    if (oldValue === direction) return;
+    
+    this.manualVerticalDirection = direction;
+    this.updatePosition();
+    this._emit('verticalDirectionChange', { from: oldValue, to: direction });
+  }
+
   setOffset(offsetX, offsetY) {
     const oldOffsetX = this.offsetX;
     const oldOffsetY = this.offsetY;
@@ -1739,8 +1959,8 @@ class Pointy {
       fromTarget: previousTarget
     });
     
-    // Set direction: step.direction can be 'up', 'down', or undefined (auto)
-    this.manualDirection = step.direction || null;
+    // Parse direction: can be 'up', 'down', 'left', 'right', 'up-left', 'down-right', etc.
+    this._parseDirection(step.direction);
     
     // Reset velocity tracking for new target
     this._targetYHistory = [];
@@ -2048,7 +2268,7 @@ class Pointy {
    * When next() is called, it will continue from where it left off.
    * @param {string|HTMLElement} target - The target element or selector
    * @param {string} content - Optional content to show
-   * @param {string} direction - Optional direction: 'up', 'down', or null for auto
+   * @param {string} direction - Optional direction: 'up', 'down', 'left', 'right', 'up-left', 'down-right', etc. or null for auto
    */
   pointTo(target, content, direction) {
     const previousTarget = this.targetElement;
@@ -2063,8 +2283,8 @@ class Pointy {
       fromTarget: previousTarget
     });
     
-    // Set manual direction (null means auto)
-    this.manualDirection = direction || null;
+    // Parse direction (null means auto)
+    this._parseDirection(direction);
     
     // Reset velocity tracking for new target
     this._targetYHistory = [];
