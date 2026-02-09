@@ -188,6 +188,14 @@ interface PointyOptions {
   cssVarPrefix?: string;
   /** Custom SVG markup for pointer or React element */
   pointerSvg?: string | React.ReactNode;
+  /** Custom bubble background color (CSS color value) */
+  bubbleBackgroundColor?: string;
+  /** Custom bubble text color (CSS color value) */
+  bubbleTextColor?: string;
+  /** Maximum width for bubble (CSS width value, default: 'min(400px, 90vw)') */
+  bubbleMaxWidth?: string;
+  /** Custom pointer/cursor color (CSS color value) */
+  pointerColor?: string;
 
   // Callbacks
   /** Called when step changes */
@@ -352,7 +360,7 @@ type PointyMessageCycleEvent = 'messageCycleStart' | 'messageCycleStop' | 'messa
 type PointyPointingEvent = 'beforePointTo' | 'pointTo' | 'pointToComplete';
 type PointyTrackingEvent = 'track' | 'targetChange' | 'trackingChange' | 'trackingFpsChange';
 type PointyAutoplayEvent = 'autoplayStart' | 'autoplayStop' | 'autoplayPause' | 'autoplayResume' | 'autoplayNext' | 'autoplayComplete' | 'autoHide' | 'autoplayChange' | 'autoplayWaitForMessagesChange';
-type PointyConfigEvent = 'easingChange' | 'animationDurationChange' | 'introFadeDurationChange' | 'bubbleFadeDurationChange' | 'messageIntervalChange' | 'messageTransitionDurationChange' | 'offsetChange' | 'resetOnCompleteChange' | 'hideOnCompleteChange' | 'hideOnCompleteDelayChange' | 'floatingAnimationChange' | 'initialPositionChange' | 'initialPositionOffsetChange' | 'pointerSvgChange' | 'zIndexChange';
+type PointyConfigEvent = 'easingChange' | 'animationDurationChange' | 'introFadeDurationChange' | 'bubbleFadeDurationChange' | 'bubbleBackgroundColorChange' | 'bubbleTextColorChange' | 'bubbleMaxWidthChange' | 'pointerColorChange' | 'messageIntervalChange' | 'messageTransitionDurationChange' | 'offsetChange' | 'resetOnCompleteChange' | 'hideOnCompleteChange' | 'hideOnCompleteDelayChange' | 'floatingAnimationChange' | 'initialPositionChange' | 'initialPositionOffsetChange' | 'pointerSvgChange' | 'zIndexChange';
 
 type PointyEvent = PointyLifecycleEvent | PointyNavigationEvent | PointyAnimationEvent | PointyDirectionEvent | PointyViewportEvent | PointyContentEvent | PointyMessageCycleEvent | PointyPointingEvent | PointyTrackingEvent | PointyAutoplayEvent | PointyConfigEvent;
 
@@ -531,6 +539,14 @@ declare class Pointy {
   messageInterval: number | null;
   /** Current pointer SVG or React element */
   pointerSvg: string | React.ReactNode;
+  /** Custom bubble background color */
+  bubbleBackgroundColor: string | null;
+  /** Custom bubble text color */
+  bubbleTextColor: string | null;
+  /** Maximum width for bubble (default: min(400px, 90vw)) */
+  bubbleMaxWidth: string | null;
+  /** Custom pointer/cursor color */
+  pointerColor: string | null;
 
   // Viewport properties
   /** Whether to auto-flip bubble to stay in viewport */
@@ -719,6 +735,26 @@ declare class Pointy {
    * @param duration - Duration in milliseconds
    */
   setBubbleFadeDuration(duration: number): void;
+  /**
+   * Set the bubble background color
+   * @param color - CSS color value (hex, rgb, etc.) or null to reset
+   */
+  setBubbleBackgroundColor(color: string | null): void;
+  /**
+   * Set the bubble text color
+   * @param color - CSS color value (hex, rgb, etc.) or null to reset
+   */
+  setBubbleTextColor(color: string | null): void;
+  /**
+   * Set the bubble max width
+   * @param width - CSS width value (e.g., '90vw', '300px') or null to reset
+   */
+  setBubbleMaxWidth(width: string | null): void;
+  /**
+   * Set the pointer/cursor color
+   * @param color - CSS color value (hex, rgb, etc.) or null to reset
+   */
+  setPointerColor(color: string | null): void;
   /**
    * Set the message transition duration
    * @param duration - Duration in milliseconds

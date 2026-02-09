@@ -13,7 +13,8 @@ A lightweight, dependency-free JavaScript library for creating animated tooltips
 - 📝 **Multi-step Tours** - Create guided product tours with multiple steps
 - 💬 **Multi-message Steps** - Each step can have multiple messages that auto-cycle
 - 🎬 **Autoplay Mode** - Automatically advance through steps
-- 🎨 **Customizable Styling** - CSS variables, custom class names, and SVG support
+- 🎨 **Customizable Styling** - CSS variables, custom class names, SVG support, and color theming
+- 🎨 **Color Theming** - Customize pointer, bubble background, and text colors
 - 📍 **Target Tracking** - Follows target elements in real-time
 - ⚛️ **React Compatible** - Supports JSX/React elements as content
 - 🔗 **Event System** - Comprehensive events with group listeners
@@ -67,6 +68,32 @@ pointy.show();
   direction: 'up-left',         // Direction preset or null (auto)
   duration: 3000                // Step-specific autoplay duration (ms)
 }
+```
+
+### Content Types
+
+Pointy supports multiple content formats:
+
+```javascript
+// Plain text
+{ target: '#el', content: 'Simple message' }
+
+// HTML string with custom layout
+{ target: '#el', content: `
+  <div style="display: flex; gap: 10px; align-items: flex-start; max-width: 260px; margin: 4px 0;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 16v-4M12 8h.01"/>
+    </svg>
+    <span style="line-height: 1.4;">Custom tooltip with icon and flexible multi-line text layout!</span>
+  </div>
+` }
+
+// Multiple messages (auto-cycles)
+{ target: '#el', content: ['First message', 'Second message', 'Third message'] }
+
+// React/JSX element (if using React)
+{ target: '#el', content: <MyCustomComponent /> }
 ```
 
 ### Direction Presets
@@ -129,6 +156,15 @@ pointy.pointTo('#element', 'Message', 'down-left');
 | `autoplayEnabled` | `boolean` | `false` | Start autoplay on show |
 | `autoplayWaitForMessages` | `boolean` | `true` | Wait for all messages |
 | `messageInterval` | `number\|null` | `null` | Message auto-cycle interval (ms) |
+
+### Styling
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `pointerColor` | `string` | `null` | Pointer/cursor color (CSS color) |
+| `bubbleBackgroundColor` | `string` | `null` | Bubble background color (CSS color) |
+| `bubbleTextColor` | `string` | `null` | Bubble text color (CSS color) |
+| `bubbleMaxWidth` | `string` | `'min(400px, 90vw)'` | Maximum bubble width (CSS value) |
 
 ### Completion
 
@@ -247,6 +283,10 @@ pointy.setHideOnCompleteDelay(500);
 
 // Styling
 pointy.setPointerSvg('<svg>...</svg>');
+pointy.setPointerColor('#ff6600');           // Pointer color
+pointy.setBubbleBackgroundColor('#1a1a2e');  // Bubble background
+pointy.setBubbleTextColor('#ffffff');        // Bubble text
+pointy.setBubbleMaxWidth('300px');           // Max bubble width
 ```
 
 ## Easing Presets
@@ -393,7 +433,18 @@ pointy.on('all', (data) => {
 | `stayInViewportChange` | `{ from: { enabled, x, y }, to: { enabled, x, y } }` |
 
 #### Config
-All setter methods emit `*Change` events with `{ from, to }` data.
+All setter methods emit `*Change` events with `{ from, to }` data:
+
+| Event | Description |
+|-------|-------------|
+| `pointerColorChange` | Pointer color changed |
+| `bubbleBackgroundColorChange` | Bubble background color changed |
+| `bubbleTextColorChange` | Bubble text color changed |
+| `bubbleMaxWidthChange` | Bubble max width changed |
+| `easingChange` | Easing preset changed |
+| `animationDurationChange` | Animation duration changed |
+| `floatingAnimationChange` | Floating animation toggled |
+| ... | (and more for all setters) |
 
 ## CSS Customization
 
@@ -401,9 +452,16 @@ All setter methods emit `*Change` events with `{ from, to }` data.
 
 ```css
 .pointy-container {
+  /* Animation */
   --pointy-duration: 1000ms;
   --pointy-easing: cubic-bezier(0, 0.55, 0.45, 1);
   --pointy-bubble-fade: 500ms;
+  
+  /* Colors */
+  --pointy-pointer-color: #0a1551;
+  --pointy-bubble-bg: #0a1551;
+  --pointy-bubble-color: white;
+  --pointy-bubble-max-width: min(400px, 90vw);
 }
 ```
 
@@ -486,6 +544,26 @@ const tour = new Pointy({
 });
 
 tour.show();
+```
+
+### Custom Theming
+
+```javascript
+const tour = new Pointy({
+  steps: [
+    { target: '#feature', content: 'Check out this feature!' }
+  ],
+  pointerColor: '#ff6600',
+  bubbleBackgroundColor: '#1a1a2e',
+  bubbleTextColor: '#ffffff',
+  bubbleMaxWidth: '300px'
+});
+
+tour.show();
+
+// Or change colors at runtime
+tour.setPointerColor('#00ff88');
+tour.setBubbleBackgroundColor('#2d2d44');
 ```
 
 ### Autoplay Tour

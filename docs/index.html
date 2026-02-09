@@ -682,6 +682,23 @@
       </div>
       
       <div class="control-section">
+        <h4>Style</h4>
+        <div class="input-group" title="Background color of the message bubble.">
+          <span class="input-label">Bg Color:</span>
+          <input type="color" class="control-input" id="bubbleBgColorInput" value="#0a1551" style="padding: 2px; height: 32px;">
+        </div>
+        <div class="input-group" title="Text color of the message bubble.">
+          <span class="input-label">Text Color:</span>
+          <input type="color" class="control-input" id="bubbleTextColorInput" value="#ffffff" style="padding: 2px; height: 32px;">
+        </div>
+        <div class="input-group" title="Color of the pointer/cursor.">
+          <span class="input-label">Pointer:</span>
+          <input type="color" class="control-input" id="pointerColorInput" value="#0a1551" style="padding: 2px; height: 32px;">
+        </div>
+        <button class="control-btn" id="resetColorsBtn" style="width: 100%;" title="Reset all colors to default (navy blue background/pointer, white text).">🔄 Reset Colors</button>
+      </div>
+      
+      <div class="control-section">
         <h4>Autoplay</h4>
         <div class="input-group" title="Delay between automatic step advances in milliseconds. Set to 0 to disable autoplay by interval.">
           <span class="input-label">Interval:</span>
@@ -751,17 +768,69 @@
       return arr;
     }
 
+    // Calculate available area for targets (avoiding panels)
+    function getAvailableArea() {
+      const isMobile = window.innerWidth <= 700;
+      const isNarrow = window.innerWidth <= 500;
+      
+      // Adjust panel sizes based on viewport
+      const leftPanel = isMobile ? 16 : 220;  // Stats panel (mobile: minimal margin)
+      const rightPanel = isMobile ? 16 : 250; // Control panel (mobile: minimal margin)
+      const topPadding = isMobile ? 60 : 80;
+      const bottomPadding = isNarrow ? 100 : 160; // Steps panel + margin
+      
+      const availableWidth = Math.max(100, window.innerWidth - leftPanel - rightPanel);
+      const availableHeight = Math.max(100, window.innerHeight - topPadding - bottomPadding);
+      
+      return {
+        left: leftPanel,
+        top: topPadding,
+        width: availableWidth,
+        height: availableHeight,
+        right: window.innerWidth - rightPanel,
+        bottom: window.innerHeight - bottomPadding
+      };
+    }
+
+    // Calculate how many buttons can fit based on available space
+    function calculateButtonCount() {
+      const area = getAvailableArea();
+      const buttonWidth = 200;
+      const buttonHeight = 60;
+      const minDistance = 180; // Reduced for better packing
+      
+      // Calculate approximate grid capacity
+      const cols = Math.floor(area.width / (buttonWidth + minDistance / 2)) || 1;
+      const rows = Math.floor(area.height / (buttonHeight + minDistance / 2)) || 1;
+      const maxButtons = cols * rows;
+      
+      // Return between 2 and 6 buttons based on available space
+      return Math.max(2, Math.min(6, maxButtons));
+    }
+
     // Random position helper (avoiding edges and control bar)
     function getRandomPosition(existingPositions, width, height) {
-      const padding = 80; // Extra padding for panels
-      const minDistance = 250;
+      const area = getAvailableArea();
+      // Adjust minDistance based on available space
+      const baseMinDistance = 180;
+      const minDistance = Math.min(baseMinDistance, Math.min(area.width, area.height) / 3);
       let attempts = 0;
       let x, y;
       
+      // If no available space, return centered position
+      if (area.width < width || area.height < height) {
+        return { 
+          x: Math.max(area.left, (window.innerWidth - width) / 2),
+          y: Math.max(area.top, (window.innerHeight - height) / 2)
+        };
+      }
+      
+      const rangeX = Math.max(1, area.width - width);
+      const rangeY = Math.max(1, area.height - height);
+      
       do {
-        // Avoid left side (stats panel ~200px), right side (control panel ~230px), bottom left (steps panel)
-        x = 220 + Math.random() * (window.innerWidth - width - 220 - 250);
-        y = padding + Math.random() * (window.innerHeight - height - padding * 2 - 80);
+        x = area.left + Math.random() * rangeX;
+        y = area.top + Math.random() * rangeY;
         attempts++;
       } while (
         attempts < 100 &&
@@ -770,12 +839,18 @@
         )
       );
       
+      // Clamp to ensure within bounds
+      x = Math.max(area.left, Math.min(x, area.right - width));
+      y = Math.max(area.top, Math.min(y, area.bottom - height));
+      
       return { x, y };
     }
 
-    // Create 6 buttons at random positions
+    // Determine number of buttons based on available space
+    const buttonCount = calculateButtonCount();
     const mainContent = document.querySelector('.main-content');
-    const buttonNames = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta'];
+    const allButtonNames = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta'];
+    const buttonNames = allButtonNames.slice(0, buttonCount);
     const positions = [];
     const buttonElements = []; // Store actual DOM elements
 
@@ -897,9 +972,17 @@
     
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
-      const mainRect = mainContent.getBoundingClientRect();
-      const newX = e.clientX - mainRect.left - dragOffsetX;
-      const newY = e.clientY - mainRect.top - dragOffsetY;
+      const area = getAvailableArea();
+      const targetWidth = draggableTarget.offsetWidth;
+      const targetHeight = draggableTarget.offsetHeight;
+      
+      let newX = e.clientX - dragOffsetX;
+      let newY = e.clientY - dragOffsetY;
+      
+      // Clamp within available area
+      newX = Math.max(area.left, Math.min(newX, area.right - targetWidth));
+      newY = Math.max(area.top, Math.min(newY, area.bottom - targetHeight));
+      
       draggableTarget.style.left = `${newX}px`;
       draggableTarget.style.top = `${newY}px`;
     });
@@ -934,10 +1017,11 @@
     const trackingIndex = shuffledButtons.indexOf(trackingBtn);
     
     // Randomly pick 2 different indices for forced directions (excluding tracking button)
-    const availableIndices = [0, 1, 2, 3, 4, 5].filter(i => i !== trackingIndex);
+    // Only if we have enough buttons
+    const availableIndices = Array.from({ length: buttonCount }, (_, i) => i).filter(i => i !== trackingIndex);
     const shuffledIndices = shuffle(availableIndices);
-    const upIndex = shuffledIndices[0];
-    const downIndex = shuffledIndices[1];
+    const upIndex = shuffledIndices.length > 0 ? shuffledIndices[0] : -1;
+    const downIndex = shuffledIndices.length > 1 ? shuffledIndices[1] : -1;
     
     // Add badges to the forced direction buttons
     function addDirectionBadge(btn, direction) {
@@ -958,12 +1042,14 @@
       btn.appendChild(badge);
     }
     
-    addDirectionBadge(shuffledButtons[upIndex], 'up');
-    addDirectionBadge(shuffledButtons[downIndex], 'down');
+    if (upIndex >= 0) addDirectionBadge(shuffledButtons[upIndex], 'up');
+    if (downIndex >= 0) addDirectionBadge(shuffledButtons[downIndex], 'down');
     
     // Pick a random index for multi-message step (not tracking, up, or down)
     const multiMessageCandidates = availableIndices.filter(i => i !== upIndex && i !== downIndex);
-    const multiMessageIndex = multiMessageCandidates[Math.floor(Math.random() * multiMessageCandidates.length)];
+    const multiMessageIndex = multiMessageCandidates.length > 0 
+      ? multiMessageCandidates[Math.floor(Math.random() * multiMessageCandidates.length)]
+      : -1;
     
     // Add multi-message badge
     function addMultiMessageBadge(btn) {
@@ -983,9 +1069,18 @@
       btn.appendChild(badge);
     }
     
-    addMultiMessageBadge(shuffledButtons[multiMessageIndex]);
+    if (multiMessageIndex >= 0) addMultiMessageBadge(shuffledButtons[multiMessageIndex]);
     
     // Different tooltip messages
+    const customHtmlTooltip = `<div style="display: flex; gap: 10px; align-items: flex-start; max-width: 260px; margin: 4px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+        <path d="M12 16v-4"/>
+        <path d="M12 8h.01"/>
+      </svg>
+      <span style="line-height: 1.4;">This tooltip demonstrates custom HTML content with flexible layouts, SVG icons, and multi-line text wrapping capabilities.</span>
+    </div>`;
+    
     const tooltipMessages = [
       'Hey! Start here',
       'Now check this out',
@@ -994,6 +1089,33 @@
       'Almost there...',
       'Final destination!'
     ];
+    
+    // Pick a random index for custom HTML tooltip (not tracking, up, down, or multi)
+    const reservedIndices = [trackingIndex, upIndex, downIndex, multiMessageIndex].filter(i => i >= 0);
+    const customHtmlCandidates = Array.from({ length: buttonCount }, (_, i) => i).filter(i => !reservedIndices.includes(i));
+    const customHtmlIndex = customHtmlCandidates.length > 0 
+      ? customHtmlCandidates[Math.floor(Math.random() * customHtmlCandidates.length)]
+      : -1;
+    
+    // Add custom HTML badge
+    function addCustomHtmlBadge(btn) {
+      const badge = document.createElement('span');
+      badge.style.cssText = `
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #8b5cf6;
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+      `;
+      badge.textContent = '</> HTML';
+      btn.appendChild(badge);
+    }
+    
+    if (customHtmlIndex >= 0) addCustomHtmlBadge(shuffledButtons[customHtmlIndex]);
     
     // Multi-message content
     const multiMessages = [
@@ -1009,6 +1131,7 @@
       content: i === upIndex ? 'Always points up' : 
                i === downIndex ? 'Always points down' : 
                i === multiMessageIndex ? multiMessages :
+               i === customHtmlIndex ? customHtmlTooltip :
                tooltipMessages[i],
       direction: i === upIndex ? 'up' : i === downIndex ? 'down' : undefined
     }));
@@ -1112,6 +1235,9 @@
       stayInViewportToggle.classList.toggle('active', pointy.stayInViewport);
       thresholdXInput.value = pointy.viewportThresholdX;
       thresholdYInput.value = pointy.viewportThresholdY;
+      bubbleBgColorInput.value = pointy.bubbleBackgroundColor || '#0a1551';
+      bubbleTextColorInput.value = pointy.bubbleTextColor || '#ffffff';
+      pointerColorInput.value = pointy.pointerColor || '#0a1551';
       autoplayInput.value = pointy.autoplay || 0;
       autoplayToggle.classList.toggle('active', pointy.autoplayEnabled && pointy.isAutoplayActive());
       waitForMessagesToggle.classList.toggle('active', pointy.autoplayWaitForMessages);
@@ -1180,6 +1306,12 @@
     // Control Panel Collapse
     const controlPanel = document.getElementById('controlPanel');
     const controlPanelHeader = document.getElementById('controlPanelHeader');
+    
+    // Collapse by default on mobile
+    if (window.innerWidth <= 768) {
+      controlPanel.classList.add('collapsed');
+    }
+    
     controlPanelHeader.addEventListener('click', () => {
       controlPanel.classList.toggle('collapsed');
     });
@@ -1314,6 +1446,37 @@
     thresholdYInput.addEventListener('input', () => {
       const value = parseInt(thresholdYInput.value, 10) || 0;
       pointy.setStayInViewport(pointy.stayInViewport, { y: value });
+      saveConfigToUrl();
+    });
+
+    // Bubble Style controls
+    const bubbleBgColorInput = document.getElementById('bubbleBgColorInput');
+    const bubbleTextColorInput = document.getElementById('bubbleTextColorInput');
+    const pointerColorInput = document.getElementById('pointerColorInput');
+    const resetColorsBtn = document.getElementById('resetColorsBtn');
+    
+    bubbleBgColorInput.addEventListener('input', () => {
+      pointy.setBubbleBackgroundColor(bubbleBgColorInput.value);
+      saveConfigToUrl();
+    });
+    
+    bubbleTextColorInput.addEventListener('input', () => {
+      pointy.setBubbleTextColor(bubbleTextColorInput.value);
+      saveConfigToUrl();
+    });
+    
+    pointerColorInput.addEventListener('input', () => {
+      pointy.setPointerColor(pointerColorInput.value);
+      saveConfigToUrl();
+    });
+    
+    resetColorsBtn.addEventListener('click', () => {
+      bubbleBgColorInput.value = '#0a1551';
+      bubbleTextColorInput.value = '#ffffff';
+      pointerColorInput.value = '#0a1551';
+      pointy.setBubbleBackgroundColor(null);
+      pointy.setBubbleTextColor(null);
+      pointy.setPointerColor(null);
       saveConfigToUrl();
     });
 
@@ -1483,6 +1646,9 @@
         stayInViewport: pointy.stayInViewport,
         viewportThresholdX: pointy.viewportThresholdX,
         viewportThresholdY: pointy.viewportThresholdY,
+        bubbleBackgroundColor: pointy.bubbleBackgroundColor || '',
+        bubbleTextColor: pointy.bubbleTextColor || '',
+        pointerColor: pointy.pointerColor || '',
         autoplayInterval: pointy.autoplay || 0,
         autoplayEnabled: pointy.autoplayEnabled,
         autoplayWaitForMessages: pointy.autoplayWaitForMessages
@@ -1509,6 +1675,9 @@
       if (config.stayInViewport !== undefined) pointy.stayInViewport = config.stayInViewport === 'true' || config.stayInViewport === true;
       if (config.viewportThresholdX !== undefined) pointy.viewportThresholdX = Number(config.viewportThresholdX);
       if (config.viewportThresholdY !== undefined) pointy.viewportThresholdY = Number(config.viewportThresholdY);
+      if (config.bubbleBackgroundColor !== undefined && config.bubbleBackgroundColor !== '') pointy.bubbleBackgroundColor = config.bubbleBackgroundColor;
+      if (config.bubbleTextColor !== undefined && config.bubbleTextColor !== '') pointy.bubbleTextColor = config.bubbleTextColor;
+      if (config.pointerColor !== undefined && config.pointerColor !== '') pointy.pointerColor = config.pointerColor;
       if (config.autoplayInterval !== undefined) pointy.autoplay = Number(config.autoplayInterval) || null;
       if (config.autoplay !== undefined && config.autoplayInterval === undefined) pointy.autoplay = Number(config.autoplay) || null;
       if (config.autoplayEnabled === true || config.autoplayEnabled === 'true') pointy.autoplayEnabled = true;
@@ -1518,6 +1687,15 @@
       pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-duration`, `${pointy.animationDuration}ms`);
       pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-easing`, pointy._resolveEasing(pointy.easing));
       pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-bubble-fade`, `${pointy.bubbleFadeDuration}ms`);
+      if (pointy.bubbleBackgroundColor) {
+        pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-bubble-bg`, pointy.bubbleBackgroundColor);
+      }
+      if (pointy.bubbleTextColor) {
+        pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-bubble-color`, pointy.bubbleTextColor);
+      }
+      if (pointy.pointerColor) {
+        pointy.container.style.setProperty(`--${pointy.cssVarPrefix}-pointer-color`, pointy.pointerColor);
+      }
       if (!pointy.floatingAnimation) pointy.container.style.animationPlayState = 'paused';
     }
     
@@ -1597,6 +1775,9 @@
         stayInViewport: pointy.stayInViewport,
         viewportThresholdX: pointy.viewportThresholdX,
         viewportThresholdY: pointy.viewportThresholdY,
+        bubbleBackgroundColor: pointy.bubbleBackgroundColor || '',
+        bubbleTextColor: pointy.bubbleTextColor || '',
+        pointerColor: pointy.pointerColor || '',
         autoplayInterval: pointy.autoplay || 0,
         autoplayEnabled: pointy.autoplayEnabled,
         autoplayWaitForMessages: pointy.autoplayWaitForMessages
@@ -1625,6 +1806,16 @@
         if (config.viewportThresholdX !== undefined) thresholds.x = Number(config.viewportThresholdX);
         if (config.viewportThresholdY !== undefined) thresholds.y = Number(config.viewportThresholdY);
         pointy.setStayInViewport(enabled, Object.keys(thresholds).length > 0 ? thresholds : undefined);
+      }
+      // Bubble styling
+      if (config.bubbleBackgroundColor !== undefined && config.bubbleBackgroundColor !== '') {
+        pointy.setBubbleBackgroundColor(config.bubbleBackgroundColor);
+      }
+      if (config.bubbleTextColor !== undefined && config.bubbleTextColor !== '') {
+        pointy.setBubbleTextColor(config.bubbleTextColor);
+      }
+      if (config.pointerColor !== undefined && config.pointerColor !== '') {
+        pointy.setPointerColor(config.pointerColor);
       }
       // Set autoplay interval without starting (setAutoplayInterval)
       if (config.autoplayInterval !== undefined) {

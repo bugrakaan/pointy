@@ -1,6 +1,6 @@
 /**
  * Pointy - A lightweight tooltip library with animated pointer
- * @version 1.1.1
+ * @version 1.2.0
  * @license MIT
  */
 (function (global, factory) {
@@ -60,6 +60,9 @@
    * - classNames {object} - Full override of class names
    * - cssVarPrefix {string} - CSS variable prefix (default: classPrefix)
    * - pointerSvg {string} - Custom SVG for pointer
+   * - bubbleBackgroundColor {string} - Custom bubble background color (default: '#0a1551')
+   * - bubbleTextColor {string} - Custom bubble text color (default: 'white')
+   * - bubbleMaxWidth {string} - Max width for bubble (default: '90vw')
    * - onStepChange {function} - Callback on step change
    * - onComplete {function} - Callback on tour complete
    * 
@@ -158,6 +161,7 @@
    * 
    * Setters (all emit change events):
    * setEasing(), setAnimationDuration(), setIntroFadeDuration(), setBubbleFadeDuration(),
+   * setBubbleBackgroundColor(), setBubbleTextColor(), setBubbleMaxWidth(),
    * setMessageInterval(), setMessageTransitionDuration(), setOffset(), setZIndex(),
    * setStayInViewport(enabled, thresholds?), setDirection(direction),
    * setHorizontalDirection(direction), setVerticalDirection(direction),
@@ -192,7 +196,7 @@
     static POINTER_SVG = `
     <svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" fill="none" viewBox="0 0 33 33">
       <g filter="url(#pointy-shadow)">
-        <path fill="#0a1551" d="m18.65 24.262 6.316-14.905c.467-1.103-.645-2.215-1.748-1.747L8.313 13.925c-1.088.461-1.083 2.004.008 2.459l5.049 2.104c.325.135.583.393.718.718l2.104 5.049c.454 1.09 1.997 1.095 2.458.007"/>
+        <path fill="currentColor" d="m18.65 24.262 6.316-14.905c.467-1.103-.645-2.215-1.748-1.747L8.313 13.925c-1.088.461-1.083 2.004.008 2.459l5.049 2.104c.325.135.583.393.718.718l2.104 5.049c.454 1.09 1.997 1.095 2.458.007"/>
       </g>
       <defs>
         <filter id="pointy-shadow" width="32.576" height="32.575" x="0" y="0" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
@@ -271,6 +275,10 @@
       --${vp}-duration: 1000ms;
       --${vp}-easing: cubic-bezier(0, 0.55, 0.45, 1);
       --${vp}-bubble-fade: 500ms;
+      --${vp}-bubble-bg: #0a1551;
+      --${vp}-bubble-color: white;
+      --${vp}-bubble-max-width: min(400px, 90vw);
+      --${vp}-pointer-color: #0a1551;
       transition: left var(--${vp}-duration) var(--${vp}-easing), top var(--${vp}-duration) var(--${vp}-easing), opacity 0.3s ease;
       animation: ${cn.container}-float 3s ease-in-out infinite;
     }
@@ -291,7 +299,8 @@
     .${cn.pointer} {
       width: 33px;
       height: 33px;
-      transition: transform var(--${vp}-duration) var(--${vp}-easing);
+      color: var(--${vp}-pointer-color);
+      transition: transform var(--${vp}-duration) var(--${vp}-easing), color 0.3s ease;
     }
 
     .${cn.bubble} {
@@ -299,21 +308,23 @@
       right: 26px;
       left: auto;
       top: 0;
-      background: #0a1551;
-      color: white;
+      background: var(--${vp}-bubble-bg);
+      color: var(--${vp}-bubble-color);
       padding: 4px 12px;
       border-radius: 14px;
       font-size: 14px;
       line-height: 20px;
       font-weight: 400;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
-      white-space: nowrap;
+      width: max-content;
+      max-width: var(--${vp}-bubble-max-width);
       overflow: hidden;
-      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform var(--${vp}-duration) var(--${vp}-easing), opacity var(--${vp}-bubble-fade) ease, left var(--${vp}-duration) var(--${vp}-easing), right var(--${vp}-duration) var(--${vp}-easing);
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform var(--${vp}-duration) var(--${vp}-easing), opacity var(--${vp}-bubble-fade) ease, left var(--${vp}-duration) var(--${vp}-easing), right var(--${vp}-duration) var(--${vp}-easing), background 0.3s ease, color 0.3s ease;
     }
 
     .${cn.bubbleText} {
-      display: inline-block;
+      display: block;
+      word-break: break-word;
     }
   `;
     }
@@ -353,16 +364,20 @@
     static animateText(element, newContent, duration = 500, bubble = null, onComplete = null) {
       const hideTime = duration * 0.4;
       const revealTime = duration * 0.6;
+      const resizeTime = 300; // Match CSS transition
       
       // Measure new content dimensions using a hidden container
       let newWidth = null;
       let newHeight = null;
       if (bubble) {
+        // Get bubble's max-width for proper measurement of multi-line content
+        const bubbleStyles = window.getComputedStyle(bubble);
+        const maxWidth = bubbleStyles.maxWidth;
+        
         const measureDiv = document.createElement('div');
-        measureDiv.style.cssText = 'visibility: hidden; position: absolute; padding: 4px 12px;';
+        measureDiv.style.cssText = `visibility: hidden; position: absolute; padding: 4px 12px; width: max-content; max-width: ${maxWidth};`;
         Pointy.renderContent(measureDiv, newContent);
         bubble.appendChild(measureDiv);
-        // Add horizontal padding (12px left + 12px right = 24px)
         newWidth = measureDiv.offsetWidth;
         newHeight = measureDiv.offsetHeight;
         bubble.removeChild(measureDiv);
@@ -372,21 +387,25 @@
         const currentHeight = bubble.offsetHeight;
         bubble.style.width = currentWidth + 'px';
         bubble.style.height = currentHeight + 'px';
+        
+        // Force reflow
+        bubble.offsetHeight;
+        
+        // Start resizing bubble to new size immediately
+        bubble.style.width = newWidth + 'px';
+        bubble.style.height = newHeight + 'px';
       }
       
       // Phase 1: Hide old text (clip from left, disappears to right)
       element.style.transition = `clip-path ${hideTime}ms ease-in`;
       element.style.clipPath = 'inset(0 0 0 100%)';
       
+      // Wait for bubble resize AND text hide, then change content
+      const contentChangeDelay = Math.max(hideTime, resizeTime);
+      
       setTimeout(() => {
-        // Change content while fully clipped
+        // Change content while fully clipped AND bubble is at new size
         Pointy.renderContent(element, newContent);
-        
-        // Animate bubble to new size
-        if (bubble && newWidth !== null) {
-          bubble.style.width = newWidth + 'px';
-          bubble.style.height = newHeight + 'px';
-        }
         
         // Prepare for reveal (start fully clipped from right)
         element.style.transition = 'none';
@@ -399,16 +418,16 @@
         element.style.transition = `clip-path ${revealTime}ms ease-out`;
         element.style.clipPath = 'inset(0 0 0 0)';
         
-        // Clear dimensions after transition so it can auto-size
+        // Clear explicit dimensions after reveal so bubble can auto-size
         if (bubble) {
           setTimeout(() => {
             bubble.style.width = '';
             bubble.style.height = '';
-          }, revealTime + 100);
+          }, revealTime + 50);
         }
         
         if (onComplete) onComplete();
-      }, hideTime);
+      }, contentChangeDelay);
     }
 
     /**
@@ -491,6 +510,10 @@
       this.autoplayWaitForMessages = options.autoplayWaitForMessages !== undefined ? options.autoplayWaitForMessages : true; // Wait for all messages before advancing
       this.hideOnComplete = options.hideOnComplete !== undefined ? options.hideOnComplete : true; // Auto-hide after tour completes
       this.hideOnCompleteDelay = options.hideOnCompleteDelay !== undefined ? options.hideOnCompleteDelay : null; // Delay before hide (null = use animationDuration)
+      this.bubbleBackgroundColor = options.bubbleBackgroundColor || null; // Custom bubble background color
+      this.bubbleTextColor = options.bubbleTextColor || null; // Custom bubble text color
+      this.bubbleMaxWidth = options.bubbleMaxWidth || null; // Max width for bubble (default: min(400px, 90vw))
+      this.pointerColor = options.pointerColor || null; // Custom pointer/cursor color
       this._autoplayTimeoutId = null;
       this._autoplayPaused = false;
       this._messagesCompletedForStep = false; // Track if all messages have been shown
@@ -515,6 +538,10 @@
       this._lastDirectionChangeTime = 0; // Debounce direction changes
       this.manualHorizontalDirection = null; // 'left', 'right', or null (auto)
       this.manualVerticalDirection = null; // 'up', 'down', or null (auto)
+      this._autoDirectionLocked = false; // Lock auto-direction after first calculation per target
+      this._lastTargetElement = null; // Track target changes to recalculate direction
+      this._bubbleConstraintApplied = false; // Track if bubble constraint has been calculated
+      this._cachedBubbleNaturalWidth = null; // Cache bubble's natural width before constraint
       this.moveTimeout = null;
       this._hasShownBefore = false; // For intro animation
 
@@ -530,6 +557,20 @@
       this.container.style.setProperty(`--${this.cssVarPrefix}-duration`, `${this.animationDuration}ms`);
       this.container.style.setProperty(`--${this.cssVarPrefix}-easing`, this._resolveEasing(this.easing));
       this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-fade`, `${this.bubbleFadeDuration}ms`);
+      
+      // Apply custom bubble colors if provided
+      if (this.bubbleBackgroundColor) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-bg`, this.bubbleBackgroundColor);
+      }
+      if (this.bubbleTextColor) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-color`, this.bubbleTextColor);
+      }
+      if (this.bubbleMaxWidth) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-max-width`, this.bubbleMaxWidth);
+      }
+      if (this.pointerColor) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-pointer-color`, this.pointerColor);
+      }
       
       // Apply floating animation setting
       if (!this.floatingAnimation) {
@@ -620,7 +661,7 @@
       const scrollY = window.scrollY;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const bubbleWidth = this.bubble.offsetWidth || 100;
+      this.bubble.offsetWidth || 100;
       const bubbleHeight = this.bubble.offsetHeight || 28;
 
       // Manual horizontal direction takes priority
@@ -666,45 +707,46 @@
         this.lastTargetY = currentTargetY;
       }
 
-      // Stay in viewport: check if bubble would go off-screen and flip accordingly
-      // Only auto-flip directions that are not manually set
-      if (this.stayInViewport) {
+      // Check if target changed - if so, unlock auto direction and bubble constraint
+      if (this._lastTargetElement !== this.targetElement) {
+        this._autoDirectionLocked = false;
+        this._bubbleConstraintApplied = false;
+        this._cachedBubbleNaturalWidth = null;
+        this.bubble.style.maxWidth = ''; // Reset constraint for new target
+        this._lastTargetElement = this.targetElement;
+      }
+
+      // Stay in viewport: calculate optimal direction ONCE per target, then lock it
+      // This prevents flip-flopping during animations and tracking
+      if (this.stayInViewport && !this._autoDirectionLocked) {
         const prevIsPointingLeft = this.isPointingLeft;
         const prevIsPointingUp = this.isPointingUp;
         
-        // Horizontal flip check (only if not manually set)
+        // Horizontal direction (only if not manually set)
         if (this.manualHorizontalDirection === null) {
-          const bubbleLeftIfPointingLeft = targetRect.left - bubbleWidth - this.viewportThresholdX;
-          const bubbleRightIfPointingRight = targetRect.right + bubbleWidth + this.viewportThresholdX;
+          // Calculate available space on each side
+          const spaceOnLeft = targetRect.left - this.viewportThresholdX;
+          const spaceOnRight = viewportWidth - targetRect.right - this.viewportThresholdX;
           
-          // Flip to right side if bubble goes off left edge
-          if (bubbleLeftIfPointingLeft < 0 && this.isPointingLeft) {
-            this.isPointingLeft = false;
-          }
-          // Flip to left side if bubble goes off right edge
-          else if (bubbleRightIfPointingRight > viewportWidth && !this.isPointingLeft) {
-            this.isPointingLeft = true;
-          }
-          // Return to default (left) if there's room
-          else if (bubbleLeftIfPointingLeft >= 0 && !this.isPointingLeft) {
-            this.isPointingLeft = true;
-          }
+          // Pick the side with more space
+          // Add a small preference for left (default) when spaces are similar
+          const leftPreference = 20;
+          this.isPointingLeft = spaceOnLeft + leftPreference >= spaceOnRight;
         }
 
-        // Vertical flip check (only if not manually set)
+        // Vertical direction (only if not manually set)
         if (this.manualVerticalDirection === null) {
-          const bubbleBottomIfPointingUp = targetRect.bottom + bubbleHeight + this.viewportThresholdY;
-          const bubbleTopIfPointingDown = targetRect.top - bubbleHeight - this.viewportThresholdY;
+          // Calculate available space above and below
+          const spaceBelow = viewportHeight - targetRect.bottom - this.viewportThresholdY;
+          const spaceAbove = targetRect.top - this.viewportThresholdY;
           
-          // Flip to pointing down if bubble goes off bottom edge
-          if (bubbleBottomIfPointingUp > viewportHeight && this.isPointingUp) {
-            this.isPointingUp = false;
-          }
-          // Flip to pointing up if bubble goes off top edge
-          else if (bubbleTopIfPointingDown < 0 && !this.isPointingUp) {
-            this.isPointingUp = true;
-          }
+          // Pick the side with more space, slight preference for below (pointing up)
+          const belowPreference = 10;
+          this.isPointingUp = spaceBelow + belowPreference >= spaceAbove;
         }
+        
+        // Lock direction - won't recalculate until target changes
+        this._autoDirectionLocked = true;
         
         // Emit flip events if direction changed
         if (prevIsPointingLeft !== this.isPointingLeft) {
@@ -767,8 +809,77 @@
 
       this.pointer.style.transform = pointerRotation;
       this.bubble.style.transform = bubbleTransform;
+      
+      // Clamp container position to keep pointer visible in viewport
+      const minLeft = scrollX + 8;
+      const maxLeft = scrollX + viewportWidth - 40;
+      left = Math.max(minLeft, Math.min(left, maxLeft));
+      
       this.container.style.left = `${left}px`;
       this.container.style.top = `${top}px`;
+      
+      // Ensure bubble doesn't overflow viewport horizontally
+      // Pass the viewport-relative position for constraint calculation
+      const viewportLeft = left - scrollX;
+      this._constrainBubbleToViewport(viewportLeft, viewportWidth);
+    }
+
+    /**
+     * Constrain bubble width and position to prevent horizontal viewport overflow
+     * @private
+     */
+    _constrainBubbleToViewport(containerLeft, viewportWidth) {
+      // Only calculate constraint once per target to prevent oscillation
+      if (this._bubbleConstraintApplied) return;
+      
+      const padding = 8; // Minimum padding from viewport edge
+      
+      // Temporarily remove any existing constraint to measure natural width
+      const previousMaxWidth = this.bubble.style.maxWidth;
+      this.bubble.style.maxWidth = '';
+      
+      // Force layout reflow to get accurate measurement
+      const bubbleNaturalWidth = this.bubble.offsetWidth || 100;
+      
+      // Cache the natural width
+      this._cachedBubbleNaturalWidth = bubbleNaturalWidth;
+      
+      let needsConstraint = false;
+      let constrainedWidth = 0;
+      
+      if (this.isPointingLeft) {
+        // Bubble extends to the left of pointer
+        // Bubble's left edge = containerLeft - bubbleWidth + 26 (right offset of bubble)
+        const bubbleLeftEdge = containerLeft - bubbleNaturalWidth + 26;
+        
+        if (bubbleLeftEdge < padding) {
+          // Bubble would overflow left edge - constrain its width
+          const availableWidth = containerLeft + 26 - padding;
+          constrainedWidth = Math.max(availableWidth, 80);
+          needsConstraint = true;
+        }
+      } else {
+        // Bubble extends to the right of pointer
+        // Bubble's right edge = containerLeft + 26 + bubbleWidth
+        const bubbleRightEdge = containerLeft + 26 + bubbleNaturalWidth;
+        
+        if (bubbleRightEdge > viewportWidth - padding) {
+          // Bubble would overflow right edge - constrain its width
+          const availableWidth = viewportWidth - containerLeft - 26 - padding;
+          constrainedWidth = Math.max(availableWidth, 80);
+          needsConstraint = true;
+        }
+      }
+      
+      if (needsConstraint) {
+        this.bubble.style.maxWidth = `${constrainedWidth}px`;
+      } else {
+        // Restore previous or let CSS variable handle it
+        this.bubble.style.maxWidth = previousMaxWidth || '';
+      }
+      
+      // Mark constraint as applied for this target
+      this._bubbleConstraintApplied = true;
     }
 
     show() {
@@ -1055,6 +1166,10 @@
         this.currentMessages = Array.isArray(firstStep.content) ? firstStep.content : [firstStep.content];
         this.currentMessageIndex = 0;
         Pointy.renderContent(this.bubbleText, this.currentMessages[0]);
+        this._autoDirectionLocked = false; // Unlock direction for recalculation
+        this._bubbleConstraintApplied = false;
+        this._cachedBubbleNaturalWidth = null;
+        this.bubble.style.maxWidth = '';
       }
       
       // After animation completes
@@ -1697,6 +1812,74 @@
     }
 
     /**
+     * Set the bubble background color
+     * @param {string} color - CSS color value (hex, rgb, etc.)
+     */
+    setBubbleBackgroundColor(color) {
+      const oldColor = this.bubbleBackgroundColor;
+      if (oldColor === color) return;
+      
+      this.bubbleBackgroundColor = color;
+      if (color) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-bg`, color);
+      } else {
+        this.container.style.removeProperty(`--${this.cssVarPrefix}-bubble-bg`);
+      }
+      this._emit('bubbleBackgroundColorChange', { from: oldColor, to: color });
+    }
+
+    /**
+     * Set the bubble text color
+     * @param {string} color - CSS color value (hex, rgb, etc.)
+     */
+    setBubbleTextColor(color) {
+      const oldColor = this.bubbleTextColor;
+      if (oldColor === color) return;
+      
+      this.bubbleTextColor = color;
+      if (color) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-color`, color);
+      } else {
+        this.container.style.removeProperty(`--${this.cssVarPrefix}-bubble-color`);
+      }
+      this._emit('bubbleTextColorChange', { from: oldColor, to: color });
+    }
+
+    /**
+     * Set the bubble max width
+     * @param {string} width - CSS width value (e.g., '90vw', '300px')
+     */
+    setBubbleMaxWidth(width) {
+      const oldWidth = this.bubbleMaxWidth;
+      if (oldWidth === width) return;
+      
+      this.bubbleMaxWidth = width;
+      if (width) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-bubble-max-width`, width);
+      } else {
+        this.container.style.removeProperty(`--${this.cssVarPrefix}-bubble-max-width`);
+      }
+      this._emit('bubbleMaxWidthChange', { from: oldWidth, to: width });
+    }
+
+    /**
+     * Set the pointer/cursor color
+     * @param {string} color - CSS color value (hex, rgb, etc.)
+     */
+    setPointerColor(color) {
+      const oldColor = this.pointerColor;
+      if (oldColor === color) return;
+      
+      this.pointerColor = color;
+      if (color) {
+        this.container.style.setProperty(`--${this.cssVarPrefix}-pointer-color`, color);
+      } else {
+        this.container.style.removeProperty(`--${this.cssVarPrefix}-pointer-color`);
+      }
+      this._emit('pointerColorChange', { from: oldColor, to: color });
+    }
+
+    /**
      * Get the initial position coordinates based on initialPosition setting
      * @returns {{x: number, y: number, isPointingUp?: boolean}} - Position coordinates and optional direction
      */
@@ -1973,9 +2156,13 @@
       // Parse direction: can be 'up', 'down', 'left', 'right', 'up-left', 'down-right', etc.
       this._parseDirection(step.direction);
       
-      // Reset velocity tracking for new target
+      // Reset velocity tracking and direction lock for new target
       this._targetYHistory = [];
       this.lastTargetY = null;
+      this._autoDirectionLocked = false;
+      this._bubbleConstraintApplied = false;
+      this._cachedBubbleNaturalWidth = null;
+      this.bubble.style.maxWidth = '';
       
       // Pause floating animation during movement
       this.container.classList.add(this.classNames.moving);
@@ -2297,9 +2484,13 @@
       // Parse direction (null means auto)
       this._parseDirection(direction);
       
-      // Reset velocity tracking for new target
+      // Reset velocity tracking and direction lock for new target
       this._targetYHistory = [];
       this.lastTargetY = null;
+      this._autoDirectionLocked = false;
+      this._bubbleConstraintApplied = false;
+      this._cachedBubbleNaturalWidth = null;
+      this.bubble.style.maxWidth = '';
       
       // Pause floating animation during movement
       this.container.classList.add(this.classNames.moving);
