@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pointy - Demo</title>
   <link href="https://cdn.jotfor.ms/fonts/?family=Circular" rel="stylesheet">
+  <!-- React for JSX element testing -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <style>
     * {
       margin: 0;
@@ -514,6 +517,32 @@
     font-weight: 600;
     box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
   ">Custom Target</div>
+
+  <!-- Test Panel for pointTo scenarios -->
+  <div id="testPanel" style="
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 200px;
+  ">
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; margin-bottom: 4px;">Test pointTo</div>
+    <button class="control-btn" id="testPlainText" style="font-size: 12px; padding: 8px 12px;">📝 Plain Text</button>
+    <button class="control-btn" id="testHtmlContent" style="font-size: 12px; padding: 8px 12px;">🎨 HTML Content</button>
+    <button class="control-btn" id="testMultiMessage" style="font-size: 12px; padding: 8px 12px;">💬 Multi Message</button>
+    <button class="control-btn" id="testArrayHtml" style="font-size: 12px; padding: 8px 12px;">🔄 Array HTML</button>
+    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8b5cf6; font-weight: 600; margin: 8px 0 4px;">React Tests</div>
+    <button class="control-btn" id="testReactElement" style="font-size: 12px; padding: 8px 12px;">⚛️ React Element</button>
+    <button class="control-btn" id="testReactComponent" style="font-size: 12px; padding: 8px 12px;">🧩 React Component</button>
+    <button class="control-btn" id="testReactArray" style="font-size: 12px; padding: 8px 12px;">📚 React Array</button>
+  </div>
 
   <!-- Draggable target for tracking test -->
   <div id="draggableTarget" style="
@@ -1525,6 +1554,216 @@
     const pointToBtn = document.getElementById('pointToBtn');
     pointToBtn.addEventListener('click', () => {
       pointy.pointTo('#customTarget', 'Look at this special target! 🎯');
+    });
+
+    // ============================================
+    // Test Panel - pointTo Scenarios
+    // ============================================
+    
+    // Test 1: Plain text
+    document.getElementById('testPlainText').addEventListener('click', () => {
+      pointy.pointTo('#customTarget', 'This is a simple plain text message.');
+    });
+    
+    // Test 2: HTML content with flex layout and icon
+    document.getElementById('testHtmlContent').addEventListener('click', () => {
+      const htmlContent = `<div style="display: flex; gap: 10px; align-items: flex-start; max-width: 260px; margin: 4px 0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+          <path d="M12 16v-4"/>
+          <path d="M12 8h.01"/>
+        </svg>
+        <span style="line-height: 1.4;">This is custom HTML content with SVG icon and multi-line text!</span>
+      </div>`;
+      pointy.pointTo('#customTarget', htmlContent);
+    });
+    
+    // Test 3: Multi-message array (with autoplay)
+    document.getElementById('testMultiMessage').addEventListener('click', () => {
+      const messages = [
+        'First message in array',
+        'Second message shows after interval',
+        'Third and final message!'
+      ];
+      pointy.pointTo('#customTarget', messages, { autoplay: true, interval: 2000 });
+    });
+    
+    // SVG icon helper for HTML strings
+    const svgNumber = (num) => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+      <circle cx="12" cy="12" r="10"/>
+      <text x="12" y="16" text-anchor="middle" fill="currentColor" stroke="none" font-size="12" font-weight="bold">${num}</text>
+    </svg>`;
+    
+    const svgCheck = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>`;
+    
+    const svgStar = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>`;
+    
+    // Test 4: Array of HTML content
+    document.getElementById('testArrayHtml').addEventListener('click', () => {
+      const htmlMessages = [
+        `<div style="display: flex; gap: 8px; align-items: flex-start;">
+          ${svgNumber(1)}
+          <span>First HTML message with icon</span>
+        </div>`,
+        `<div style="display: flex; gap: 10px; align-items: flex-start; max-width: 240px;">
+          ${svgCheck}
+          <span style="line-height: 1.4;">Second message with checkmark icon and longer text!</span>
+        </div>`,
+        `<div style="display: flex; gap: 8px; align-items: flex-start;">
+          ${svgStar}
+          <strong>Final HTML message!</strong>
+        </div>`
+      ];
+      pointy.pointTo('#customTarget', htmlMessages, { autoplay: true, interval: 2500 });
+    });
+    
+    // Test 5: React rendered element (createElement)
+    document.getElementById('testReactElement').addEventListener('click', () => {
+      // Star icon SVG
+      const starIcon = React.createElement('svg', {
+        key: 'icon',
+        xmlns: 'http://www.w3.org/2000/svg',
+        width: 20,
+        height: 20,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        style: { flexShrink: 0 }
+      }, [
+        React.createElement('polygon', { 
+          key: 'star',
+          points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'
+        })
+      ]);
+      
+      const reactElement = React.createElement('div', {
+        style: { display: 'flex', gap: '10px', alignItems: 'flex-start' }
+      }, [
+        starIcon,
+        React.createElement('span', { key: 'text' }, 'This is a React element!')
+      ]);
+      pointy.pointTo('#customTarget', reactElement);
+    });
+    
+    // Test 6: React function component
+    document.getElementById('testReactComponent').addEventListener('click', () => {
+      // Named function component
+      function TooltipContent() {
+        return React.createElement('div', {
+          style: { 
+            display: 'flex', 
+            gap: '10px', 
+            alignItems: 'flex-start',
+            maxWidth: '240px'
+          }
+        }, [
+          React.createElement('svg', {
+            key: 'icon',
+            xmlns: 'http://www.w3.org/2000/svg',
+            width: 20,
+            height: 20,
+            viewBox: '0 0 24 24',
+            fill: 'none',
+            stroke: 'currentColor',
+            strokeWidth: 2,
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round',
+            style: { flexShrink: 0, marginTop: '2px' }
+          }, [
+            React.createElement('circle', { key: 'c', cx: 12, cy: 12, r: 10 }),
+            React.createElement('path', { key: 'p1', d: 'M12 16v-4' }),
+            React.createElement('path', { key: 'p2', d: 'M12 8h.01' })
+          ]),
+          React.createElement('span', { 
+            key: 'text',
+            style: { lineHeight: '1.4' }
+          }, 'This is a React function component with SVG icon!')
+        ]);
+      }
+      
+      // Render the component
+      const element = React.createElement(TooltipContent);
+      pointy.pointTo('#customTarget', element);
+    });
+    
+    // Helper to create number circle SVG
+    function createNumberIcon(num) {
+      return React.createElement('svg', {
+        xmlns: 'http://www.w3.org/2000/svg',
+        width: 20,
+        height: 20,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        style: { flexShrink: 0 }
+      }, [
+        React.createElement('circle', { key: 'c', cx: 12, cy: 12, r: 10 }),
+        React.createElement('text', { 
+          key: 't', 
+          x: 12, 
+          y: 16, 
+          textAnchor: 'middle', 
+          fill: 'currentColor',
+          stroke: 'none',
+          fontSize: 12,
+          fontWeight: 'bold'
+        }, num)
+      ]);
+    }
+    
+    // Check icon SVG
+    function createCheckIcon() {
+      return React.createElement('svg', {
+        xmlns: 'http://www.w3.org/2000/svg',
+        width: 20,
+        height: 20,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        style: { flexShrink: 0 }
+      }, [
+        React.createElement('path', { key: 'p', d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+        React.createElement('polyline', { key: 'poly', points: '22 4 12 14.01 9 11.01' })
+      ]);
+    }
+    
+    // Test 7: Array of React elements
+    document.getElementById('testReactArray').addEventListener('click', () => {
+      const reactMessages = [
+        React.createElement('div', {
+          style: { display: 'flex', gap: '8px', alignItems: 'flex-start' }
+        }, [
+          React.createElement(React.Fragment, { key: 'i' }, createNumberIcon('1')),
+          React.createElement('span', { key: 't' }, 'First React element')
+        ]),
+        React.createElement('div', {
+          style: { display: 'flex', gap: '8px', alignItems: 'flex-start' }
+        }, [
+          React.createElement(React.Fragment, { key: 'i' }, createNumberIcon('2')),
+          React.createElement('strong', { key: 't' }, 'Second React element!')
+        ]),
+        React.createElement('div', {
+          style: { display: 'flex', gap: '8px', alignItems: 'flex-start' }
+        }, [
+          React.createElement(React.Fragment, { key: 'i' }, createCheckIcon()),
+          React.createElement('em', { key: 't' }, 'Final React element!')
+        ])
+      ];
+      pointy.pointTo('#customTarget', reactMessages, { autoplay: true, interval: 2500 });
     });
 
     // Restart button

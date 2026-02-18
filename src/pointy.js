@@ -429,19 +429,32 @@ class Pointy {
     if (content && typeof content === 'object' && content.$$typeof) {
       // React element - use ReactDOM if available
       if (typeof ReactDOM !== 'undefined' && ReactDOM.createRoot) {
-        // React 18+
-        const root = ReactDOM.createRoot(element);
-        root.render(content);
-        element._reactRoot = root;
+        // React 18+ - reuse existing root or create new one
+        let root = element._reactRoot;
+        if (!root) {
+          root = ReactDOM.createRoot(element);
+          element._reactRoot = root;
+        }
+        if (typeof ReactDOM.flushSync === 'function') {
+          ReactDOM.flushSync(() => {
+            root.render(content);
+          });
+        } else {
+          root.render(content);
+        }
       } else if (typeof ReactDOM !== 'undefined' && ReactDOM.render) {
-        // React 17 and below
+        // React 17 and below (already synchronous)
         ReactDOM.render(content, element);
       } else {
         console.warn('Pointy: React element passed but ReactDOM not found');
         element.innerHTML = String(content);
       }
     } else {
-      // String content - render as HTML
+      // String content - unmount React root if exists, then render as HTML
+      if (element._reactRoot) {
+        element._reactRoot.unmount();
+        element._reactRoot = null;
+      }
       element.innerHTML = content;
     }
   }
@@ -1306,6 +1319,45 @@ class Pointy {
   }
 
   /**
+   * Generate a stable key from React element content
+   * @param {object} element - React element
+   * @returns {string} - Stable key
+   * @private
+   */
+  static _generateReactKey(element) {
+    // Create a deterministic key from element type and props
+    const type = typeof element.type === 'function' 
+      ? element.type.name || 'Component'
+      : element.type || 'unknown';
+    
+    // Hash the props to create stable key (with fallback for circular refs)
+    let propsStr = '';
+    try {
+      propsStr = JSON.stringify(element.props, (key, value) => {
+        // Skip children, functions, and symbols for hashing
+        if (key === 'children' || typeof value === 'function' || typeof value === 'symbol') return undefined;
+        // Skip React elements in props (they have $$typeof symbol)
+        if (value && typeof value === 'object' && value.$$typeof) return '[ReactElement]';
+        return value;
+      }) || '';
+    } catch (e) {
+      // Fallback for circular references or other stringify errors
+      propsStr = String(Object.keys(element.props || {}).length);
+    }
+    
+    // Simple hash function
+    let hash = 0;
+    const str = type + propsStr;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    
+    return `pointy-${type}-${Math.abs(hash).toString(36)}`;
+  }
+
+  /**
    * Set messages for current step (internal)
    * @param {string|string[]} content - Single message or array of messages
    * @param {boolean} fromStepChange - Whether this is from a step change (internal)
@@ -1318,8 +1370,27 @@ class Pointy {
     // Stop any existing auto-cycle
     this._stopMessageCycle();
     
-    // Normalize to array
-    this.currentMessages = Array.isArray(content) ? content : [content];
+    // Normalize to array and add keys to React elements if needed
+    let messages = Array.isArray(content) ? content : [content];
+    
+    // Auto-add keys to React elements in array (with collision handling)
+    if (typeof React !== 'undefined' && React.cloneElement && messages.length > 1) {
+      const keyCount = new Map();
+      messages = messages.map((msg) => {
+        // Check if it's a React element without a key
+        if (msg && typeof msg === 'object' && msg.$$typeof && msg.key == null) {
+          const baseKey = Pointy._generateReactKey(msg);
+          const count = keyCount.get(baseKey) || 0;
+          keyCount.set(baseKey, count + 1);
+          // Add suffix for duplicate keys
+          const finalKey = count > 0 ? `${baseKey}-${count}` : baseKey;
+          return React.cloneElement(msg, { key: finalKey });
+        }
+        return msg;
+      });
+    }
+    
+    this.currentMessages = messages;
     this.currentMessageIndex = 0;
     
     // Show first message
@@ -1343,27 +1414,40 @@ class Pointy {
 
   /**
    * Start auto-cycling through messages
+   * @param {number} customInterval - Optional custom interval (uses messageInterval if not provided)
+   * @param {boolean} shouldCycle - Whether to cycle back to first message (default: true)
    * @private
    */
-  _startMessageCycle() {
+  _startMessageCycle(customInterval, shouldCycle = true) {
+    const intervalToUse = customInterval || this.messageInterval;
     this._messagesCompletedForStep = false;
+    this._shouldCycleMessages = shouldCycle;
     this._messageIntervalId = setInterval(() => {
-      // Check if we're at the last message and autoplay is waiting for messages
+      // Check if we're at the last message
       const isLastMessage = this.currentMessageIndex === this.currentMessages.length - 1;
       
-      if (isLastMessage && this.autoplay && this.autoplayWaitForMessages) {
-        // Don't cycle back to first message - stop here and advance to next step
-        this._stopMessageCycle();
-        this._messagesCompletedForStep = true;
-        this._emit('messageCycleComplete', { stepIndex: this.currentStepIndex, totalMessages: this.currentMessages.length });
-        // Trigger autoplay advance after a brief pause
-        this._scheduleAutoplayAfterMessages();
+      if (isLastMessage) {
+        if (this.autoplay && this.autoplayWaitForMessages) {
+          // Don't cycle back to first message - stop here and advance to next step
+          this._stopMessageCycle();
+          this._messagesCompletedForStep = true;
+          this._emit('messageCycleComplete', { stepIndex: this.currentStepIndex, totalMessages: this.currentMessages.length });
+          // Trigger autoplay advance after a brief pause
+          this._scheduleAutoplayAfterMessages();
+        } else if (!this._shouldCycleMessages) {
+          // cycle: false - stop at last message
+          this._stopMessageCycle();
+          this._emit('messageCycleComplete', { totalMessages: this.currentMessages.length });
+        } else {
+          // Normal cycling - go back to first
+          this.nextMessage(true); // true = isAuto
+        }
       } else {
         // Normal message cycling
         this.nextMessage(true); // true = isAuto
       }
-    }, this.messageInterval);
-    this._emit('messageCycleStart', { interval: this.messageInterval, totalMessages: this.currentMessages.length });
+    }, intervalToUse);
+    this._emit('messageCycleStart', { interval: intervalToUse, totalMessages: this.currentMessages.length, cycle: shouldCycle });
   }
 
   /**
@@ -2454,10 +2538,19 @@ class Pointy {
    * Temporarily point to a target without changing the current step.
    * When next() is called, it will continue from where it left off.
    * @param {string|HTMLElement} target - The target element or selector
-   * @param {string} content - Optional content to show
-   * @param {string} direction - Optional direction: 'up', 'down', 'left', 'right', 'up-left', 'down-right', etc. or null for auto
+   * @param {string|string[]|ReactElement|ReactElement[]} content - Optional content to show
+   * @param {Object} options - Options object
+   * @param {string} options.direction - Optional direction: 'up', 'down', 'left', 'right', 'up-left', 'down-right', etc. or null for auto
+   * @param {boolean} options.autoplay - Auto-cycle through messages if content is array (default: false)
+   * @param {number} options.interval - Message cycle interval in ms (uses default messageInterval if not specified)
+   * @param {boolean} options.cycle - Whether to cycle back to first message or stop at last (default: true)
    */
-  pointTo(target, content, direction) {
+  pointTo(target, content, options = {}) {
+    const direction = options.direction || null;
+    const autoplay = options.autoplay === true;
+    const interval = options.interval || null;
+    const cycle = options.cycle !== false; // default true unless explicitly false
+    
     const previousTarget = this.targetElement;
     
     // Determine actual direction ('auto' means will be calculated in updatePosition)
@@ -2498,6 +2591,11 @@ class Pointy {
     
     if (content !== undefined) {
       this._applyMessages(content, false); // false = not from step change, don't auto-start cycle
+      
+      // If autoplay is enabled and we have multiple messages, start the cycle
+      if (autoplay && Array.isArray(content) && content.length > 1) {
+        this._startMessageCycle(interval, cycle);
+      }
     } else {
       // No new content - keep cycling if it was running
       // (cycle state is preserved)

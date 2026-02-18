@@ -80,20 +80,35 @@ Pointy supports multiple content formats:
 
 // HTML string with custom layout
 { target: '#el', content: `
-  <div style="display: flex; gap: 10px; align-items: flex-start; max-width: 260px; margin: 4px 0;">
+  <div style="display: flex; gap: 10px; align-items: flex-start; max-width: 260px;">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"/>
       <path d="M12 16v-4M12 8h.01"/>
     </svg>
-    <span style="line-height: 1.4;">Custom tooltip with icon and flexible multi-line text layout!</span>
+    <span style="line-height: 1.4;">Custom tooltip with icon!</span>
   </div>
 ` }
 
-// Multiple messages (auto-cycles)
+// Multiple messages (auto-cycles with messageInterval)
 { target: '#el', content: ['First message', 'Second message', 'Third message'] }
 
-// React/JSX element (if using React)
-{ target: '#el', content: <MyCustomComponent /> }
+// React/JSX element (requires React & ReactDOM)
+{ target: '#el', content: (
+  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx={12} cy={12} r={10} />
+      <path d="M12 16v-4" />
+    </svg>
+    <span>React element with SVG!</span>
+  </div>
+) }
+
+// Array of React elements
+{ target: '#el', content: [
+  <span>First React message</span>,
+  <strong>Second React message</strong>,
+  <em>Third React message</em>
+] }
 ```
 
 ### Direction Presets
@@ -123,7 +138,7 @@ pointy.setVerticalDirection('down');      // Only vertical
 pointy.setDirection(null);                // Reset to auto
 
 // pointTo with direction
-pointy.pointTo('#element', 'Message', 'down-left');
+pointy.pointTo('#element', 'Message', { direction: 'down-left' });
 ```
 
 ### Animation
@@ -216,10 +231,34 @@ pointy.goToMessage(index);
 
 ### Point to Custom Target
 
+Temporarily point to any element without changing the current step:
+
 ```javascript
+// Basic usage
 pointy.pointTo('#element');
 pointy.pointTo('#element', 'Custom message');
-pointy.pointTo('#element', 'Message', 'down');
+
+// With options
+pointy.pointTo('#element', 'Message', {
+  direction: 'down',      // 'up', 'down', 'left', 'right', 'up-left', etc.
+  autoplay: true,         // Auto-cycle through messages (if array)
+  interval: 2000,         // Message cycle interval in ms
+  cycle: true             // Loop messages (true) or stop at last (false)
+});
+
+// Array of messages with autoplay
+pointy.pointTo('#element', [
+  'First tip',
+  'Second tip', 
+  'Third tip'
+], { autoplay: true, interval: 2500 });
+
+// Stop at last message (no loop)
+pointy.pointTo('#element', ['Step 1', 'Step 2', 'Done!'], {
+  autoplay: true,
+  interval: 2000,
+  cycle: false  // Stops at 'Done!'
+});
 ```
 
 ### Autoplay Control
@@ -393,11 +432,11 @@ pointy.on('all', (data) => {
 #### Message Cycle
 | Event | Data |
 |-------|------|
-| `messageCycleStart` | `{ interval, totalMessages }` |
+| `messageCycleStart` | `{ interval, totalMessages, cycle }` |
 | `messageCycleStop` | `{ currentIndex }` |
 | `messageCyclePause` | `{ currentIndex }` |
 | `messageCycleResume` | `{ currentIndex }` |
-| `messageCycleComplete` | `{ stepIndex, totalMessages }` |
+| `messageCycleComplete` | `{ stepIndex?, totalMessages }` |
 
 #### Pointing
 | Event | Data |
@@ -564,6 +603,42 @@ tour.show();
 // Or change colors at runtime
 tour.setPointerColor('#00ff88');
 tour.setBubbleBackgroundColor('#2d2d44');
+```
+
+### React/JSX Content
+
+```jsx
+// With React loaded via CDN or bundler
+const tour = new Pointy({
+  steps: [{
+    target: '#feature',
+    content: (
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+        <svg 
+          width={20} height={20} viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth={2}
+          strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+        <span>React element with info icon!</span>
+      </div>
+    )
+  }]
+});
+
+tour.show();
+
+// Or with pointTo and autoplay
+const messages = [
+  <span>First tip</span>,
+  <strong>Important tip!</strong>,
+  <em>Final tip</em>
+];
+
+tour.pointTo('#element', messages, { autoplay: true, interval: 2000 });
 ```
 
 ### Autoplay Tour
